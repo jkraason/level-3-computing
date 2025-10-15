@@ -3,14 +3,22 @@ import matplotlib.pyplot as plt
 def lattice_positions(config,size):
     x = np.array([0])
     y = np.array([0])
+    x_temp = np.array([])
+    y_temp = np.array([])
     if config == "sc":
-        count = 0
-        while count < size:
-            x = np.append(x,x+1)
-            y = np.append(y,y)
-            y = np.append(y,y+1)
-            x = np.append(x,x)
-            count = count+1
+        for i in range(0,(size**2)):
+            x_temp = np.array([])
+            y_temp = np.array([])
+            x_temp = np.append(x_temp,x[i]+1)
+            y_temp = np.append(y_temp,y[i])
+            y_temp = np.append(y_temp,y[i]+1)
+            x_temp = np.append(x_temp,x[i])
+            print(x_temp)
+            print(y_temp)
+            x = np.append(x,x_temp)
+            y = np.append(y,y_temp)
+            i=i+(size**2)
+            print(x,y)
     elif config == "bcc":
         count = 0
         while count < size:
@@ -37,7 +45,7 @@ def lattice_positions(config,size):
         print("error, not a recognised lattice structure")
 
     plt.scatter(x,y)
-    print(x,y)
+    print(len(x),len(y))
     return(x,y)
     
 config = input("Enter your lattice configuration: ")
