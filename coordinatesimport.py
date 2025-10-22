@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+#plots the coordinates from the document
 def plotcoords():
     xvals = np.array([])
     yvals = np.array([])
@@ -11,5 +11,4 @@ def plotcoords():
     print(xvals,yvals)
     plt.scatter(xvals,yvals)
     plt.show()
-
 plotcoords()

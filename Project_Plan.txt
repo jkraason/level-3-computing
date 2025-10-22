@@ -1,0 +1,5 @@
+Plan for the progress of my project
+
+1) Plot the particle positions from coordinates file/generate lattice
+2) Generate monte-carlo moves on the particles
+3) Register collisions between particles - maybe calculate position vectors?
