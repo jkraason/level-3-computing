@@ -14,8 +14,8 @@ Three things to account for:
 	2) Monte Carlo moves
     3) Periodic boundary conditions - make sure there is no overlapping
 
-moves 'accepted' if the particles are touching, i.e. have infinite potential energy
-moves 'rejected' if the particles are not touching, i.e. have zero potential energy
+moves 'accepted' if the particles are not overlapping, i.e. have zero potential energy
+moves 'rejected' if the particles are overlapping, i.e. have infinite potential energy - this is because the move is forbidden
 
 moves are given by the formula 'dx = d(eta-0.5)'
 this is also done for the y direction as well
