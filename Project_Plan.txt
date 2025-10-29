@@ -1,5 +1,32 @@
 Plan for the progress of my project
 
-1) Plot the particle positions from coordinates file/generate lattice
+1) Plot the particle positions from coordinates file/generate lattice - done!
 2) Generate monte-carlo moves on the particles
 3) Register collisions between particles - maybe calculate position vectors?
+
+
+Monte-Carlo Moves:
+
+import random, r = random.random()
+
+Three things to account for:
+	1) If particles overlap - this determines whether there is a 'move'
+	2) Monte Carlo moves
+    3) Periodic boundary conditions - make sure there is no overlapping
+
+moves 'accepted' if the particles are not overlapping, i.e. have zero potential energy
+moves 'rejected' if the particles are overlapping, i.e. have infinite potential energy - this is because the move is forbidden
+
+moves are given by the formula 'dx = d(eta-0.5)'
+this is also done for the y direction as well
+
+pseudocode plan:
+
+basic idea of code:
+IF particles overlap: (checking this using a loop over all particles?)
+THEN (DO monte-carlo moves)
+
+more detailed:
+generate x and y positions and plot them - set markersize to an amount such that there are some overlapped particles
+For i in range(0,len(x)):
+    if x[i]
