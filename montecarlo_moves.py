@@ -60,12 +60,12 @@ def mc_move(x, y, r, d):
     return x, y, True
 
 points_whole_ax = 5 * 0.8 * 72    # 1 point = dpi / 72 pixels
-r = 0.02
+r = 0.03
 s = np.pi*r**2
 points_radius = 2 * r / 1.0 * points_whole_ax
 # Setup
 N = 100
-d = 0.9
+d = 0.5
 
 # Random initial positions (example — not guaranteed non-overlapping)
 file = 'Coordinates.dat'
@@ -76,8 +76,30 @@ x,y = np.loadtxt(file, unpack=True)
 x = np.append(xvals,np.array(x))
 y = np.append(yvals,np.array(y))
 #plt.scatter(x,y,s=points_radius**2, color = 'r')
+def find_overlaps(x, y, r):
+    x = np.asarray(x)
+    y = np.asarray(y)
+    r = np.asarray(r)
 
+    N = len(x)
+    overlaps = []
+
+    # Handle single radius case
+    if r.ndim == 0:
+        r = np.full(N, r)
+
+    for i in range(N):
+        dx = x[i] - x[i+1:]
+        dy = y[i] - y[i+1:]
+        dist = np.sqrt(dx**2 + dy**2)
+        r_sum = r[i] + r[i+1:]
+        overlapping = np.where(dist < r_sum)[0]
+        for j in overlapping:
+            overlaps.append((i, i + 1 + j))
+    return overlaps
 # Perform 10,000 MC moves
+overlaps = find_overlaps(x, y, r)
+print("there are", len(overlaps), "overlaps")
 accepted_moves = 0
 for step in range(1000):
     x, y, accepted = mc_move(x, y, r, d)
@@ -111,5 +133,8 @@ while acceptance_ratio>0.5 or acceptance_ratio<0.25:
         acceptance_ratio = accepted_moves/1000
         print("Acceptance ratio (small):", acceptance_ratio)
 
+overlaps = find_overlaps(x, y, r)
+print("there are", len(overlaps), "overlaps")
+print("Overlapping pairs:", overlaps)
 plt.scatter(x,y,s=points_radius**2)
 plt.show()

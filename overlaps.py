@@ -20,7 +20,6 @@ def find_overlaps(x, y, r):
         overlapping = np.where(dist < r_sum)[0]
         for j in overlapping:
             overlaps.append((i, i + 1 + j))
-
     return overlaps
 # Example data
 file = 'Coordinates.dat'
@@ -33,6 +32,7 @@ r = 0.05  # all same radius
 
 overlaps = find_overlaps(xvals, yvals, r)
 print("Overlapping pairs:", overlaps)
+print("there are", len(overlaps), "overlapping pairs")
 points_whole_ax = 5 * 0.8 * 72    # 1 point = dpi / 72 pixels
 radius = 0.05
 points_radius = 2 * radius / 1.0 * points_whole_ax
