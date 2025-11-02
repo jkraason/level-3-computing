@@ -65,7 +65,7 @@ s = np.pi*r**2
 points_radius = 2 * r / 1.0 * points_whole_ax
 # Setup
 N = 100
-d = 0.5
+d = 0.1
 
 # Random initial positions (example — not guaranteed non-overlapping)
 file = 'Coordinates.dat'
@@ -97,6 +97,7 @@ def find_overlaps(x, y, r):
         for j in overlapping:
             overlaps.append((i, i + 1 + j))
     return overlaps
+
 # Perform 10,000 MC moves
 overlaps = find_overlaps(x, y, r)
 print("there are", len(overlaps), "overlaps")
@@ -132,7 +133,7 @@ while acceptance_ratio>0.5 or acceptance_ratio<0.25:
                 accepted_moves += 1
         acceptance_ratio = accepted_moves/1000
         print("Acceptance ratio (small):", acceptance_ratio)
-
+print("optimal value of d: ", d)
 overlaps = find_overlaps(x, y, r)
 print("there are", len(overlaps), "overlaps")
 print("Overlapping pairs:", overlaps)
