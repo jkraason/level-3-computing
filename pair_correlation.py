@@ -140,6 +140,7 @@ for step in range(10000):
         #print(accepted_moves)
         acceptance_ratio = accepted_moves/step
         print("Acceptance ratio (no modification): ", acceptance_ratio)
+        #can always modify this so it just does 1 cycle
 while acceptance_ratio>0.5 or acceptance_ratio<0.25:
     if acceptance_ratio>0.5:
         accepted_moves=0
@@ -163,8 +164,15 @@ print("final acceptance ratio:", acceptance_ratio)
 
 N = len(x)
 dr = 0.1*r
+
+#pair correlation function
 def pairCorrelationFunction_2D(x, y, L, rMax, dr):
     rho = N/L**2
+    n_ideal = rho*2*np.pi*r*dr
+
+
+
+
 
 print("optimal value of d: ", d)
 overlaps = find_overlaps(x, y, r)

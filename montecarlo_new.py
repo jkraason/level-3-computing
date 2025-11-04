@@ -113,11 +113,12 @@ save_every_equil = 100     # save a frame every 100 steps
 
 ### END ###
 
-# Perform initial acceptance tuning
+#initial overlaps - to make sure particles are separated
 overlaps = find_overlaps(x, y, r)
 print("there are", len(overlaps), "overlaps")
 accepted_moves = 0
 
+#initial MC simulation to determine initial acceptance ratio
 for step in range(1000):
     x, y, accepted = mc_move(x, y, r, d, L)
     if accepted:
