@@ -26,4 +26,5 @@ def simplecubic(dim):
     plt.ylabel("Y-axis")
     plt.grid(True, linestyle='--')
     plt.show()
+    return X,Y
 simplecubic(9)
