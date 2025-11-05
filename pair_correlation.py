@@ -14,7 +14,8 @@ import glob
 def mc_move(x, y, r, d, L):
 
     N = len(x)
-    r = np.full_like(x, r, dtype=float) if np.ndim(r) == 0 else np.asarray(r)
+    r=0.03
+
 
     # Pick a random particle
     i = np.random.randint(N)
@@ -126,6 +127,72 @@ def find_overlaps(x, y, r):
         for j in overlapping:
             overlaps.append((i, i + 1 + j))
     return overlaps
+dr=0.1*r
+N=len(x)
+def pairCorrelationFunction_2D(x, y, L, rMax, dr):
+    rho = N/L**2
+    #r=0.3
+    nBins = int(rMax / dr)
+    r_array = np.arange(dr/2, rMax, dr)  # bin centers
+    g_r = np.zeros(len(r_array))  # will store g(r) values
+    
+    # Compute distances and bin them
+    for i in range(N):
+        for j in range(i+1, N):  # Only j > i to avoid double counting
+            # Periodic boundary conditions
+            dx = x[i] - x[j]
+            dy = y[i] - y[j]
+            
+            dx -= L * np.round(dx / L)
+            dy -= L * np.round(dy / L)
+            
+            radius = np.sqrt(dx**2 + dy**2)
+    
+            if radius < rMax and radius>2*r:
+                bin_idx = int(radius / dr) # bin number
+                if bin_idx < len(g_r): #ensures no over-counting
+                    g_r[bin_idx] += 2  # Count for both i-j and j-i - this is just the number of particles at this point
+    
+    # Normalize by ideal gas
+    for i, r_val in enumerate(r_array):
+        # Ideal number in shell: n_ideal = rho * 2*pi*r*dr
+        n_ideal = rho * 2 * np.pi * r_val * dr
+        # Divide by N (total particles) and by n_ideal
+        g_r[i] /= (N*n_ideal)
+    
+    return r_array, g_r
+
+def averaged_g_r(Nx, Ny, spacing, r, d, L, rMax, dr, num_sims=10, equil_steps=10000):
+    """Run multiple MC simulations and average g(r)"""
+    g_r_sum = None
+    
+    for sim in range(num_sims):
+        # Initialize
+        x_sim = np.zeros(Nx*Ny)
+        y_sim = np.zeros(Nx*Ny)
+        index = 0
+        for i in range(Nx):
+            for j in range(Ny):
+                x_sim[index] = i * spacing + np.random.uniform(-0.01, 0.01)
+                y_sim[index] = j * spacing + np.random.uniform(-0.01, 0.01)
+                index += 1
+        x_sim /= max(x_sim)
+        y_sim /= max(y_sim)
+        
+        # Equilibrate
+        for step in range(equil_steps):
+            x_sim, y_sim, _ = mc_move(x_sim, y_sim, r, d, L)
+        
+        # Calculate g(r)
+        r_vals, g_r_single = pairCorrelationFunction_2D(x_sim, y_sim, L, rMax, dr)
+        
+        if g_r_sum is None:
+            g_r_sum = g_r_single
+        else:
+            g_r_sum += g_r_single
+    
+    return r_vals, g_r_sum / num_sims
+
 
 # Perform 10000 MC moves
 overlaps = find_overlaps(x, y, r)
@@ -163,14 +230,41 @@ while acceptance_ratio>0.5 or acceptance_ratio<0.25:
 print("final acceptance ratio:", acceptance_ratio)
 
 N = len(x)
-dr = 0.1*r
+dr_values = [0.1*r,0.2*r,0.3*r,0.4*r,0.5*r]
+g_r_results = []
 
-#pair correlation function
-def pairCorrelationFunction_2D(x, y, L, rMax, dr):
-    rho = N/L**2
-    n_ideal = rho*2*np.pi*r*dr
+print("\nCalculating g(r) for different dr values...")
+for dr in dr_values:
+    print(f"  Computing with dr = {dr:.4f}...")
+    r_vals, g_r = averaged_g_r(Nx, Ny, spacing, r, d, L, L/2, dr, num_sims=10, equil_steps=10000)
+    g_r_results.append((r_vals, g_r, dr))
 
 
+plt.figure(figsize=(10, 4))
+
+plt.subplot(1, 2, 1)
+points_whole_ax = 5 * 0.8 * 72
+points_radius = 2 * r / 1.0 * points_whole_ax
+plt.scatter(x, y, s=points_radius**2)
+plt.xlim(0, L)
+plt.ylim(0, L)
+plt.xlabel('x')
+plt.ylabel('y')
+plt.title('Final Configuration')
+plt.gca().set_aspect('equal')
+
+plt.subplot(1, 2, 2)
+colors = ['blue', 'green', 'red', 'purple', 'orange']
+for i, (r_vals, g_r, dr) in enumerate(g_r_results):
+    plt.plot(r_vals, g_r, color=colors[i], linewidth=2, label=f'dr = {dr:.4f}')
+
+plt.xlabel('r')
+plt.ylabel('g(r)')
+plt.title('Pair Correlation Function')
+plt.grid(True, alpha=0.3)
+plt.axhline(y=1, color='r', linestyle='--', alpha=0.5, label='Ideal gas')
+plt.legend()
+plt.show()
 
 
 

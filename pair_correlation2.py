@@ -132,3 +132,32 @@ def pairCorrelationFunction_3D(x, y, z, S, rMax, dr):
     # Number of particles in shell/total number of particles/volume of shell/number density
     # shell volume = 4/3*pi(r_outer**3-r_inner**3)
 ####
+
+import numpy as np
+#pair correlation function
+def pairCorrelationFunction_2D(x, y, L, rMax, dr):
+    rho = N/L**2
+    n_ideal = rho*2*np.pi*r*dr
+    g_r = np.array([])
+    num = np.array([])
+    r_array = np.arange(dr/2,rMax,dr)
+    overlaps = find_overlaps(x, y, r)
+    distance = np.zeros((len(x),len(y)))
+    for i in (0,len(x)-1):
+        for j in (0,len(y)-1):
+            if (j!=i) & (j>i):
+                x_temp = x[i]-x[j]
+                y_temp = y[i]-y[j]
+                x_temp -= L * np.rint(dx / L)
+                y_temp -= L * np.rint(dy / L)
+                radius = np.sqrt(y_temp**2+x_temp**2)
+            else:
+                radius = 0
+            distance[i][j] = radius
+            r_vals = np.array([])
+            for k in range(0,len(r_array)-1):
+                r_vals = np.append(r_vals,np.where(radii[k]<distance[i][j]<radii[k+1]))#between r and r+dr
+        num = np.append(len(r_vals),num)
+        g_r = np.append(num[k]/n_ideal, g_r)
+        #then rerun mc simulations and find the average for g_r
+    return g_r, r_vals
