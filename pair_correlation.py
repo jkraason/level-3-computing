@@ -1,11 +1,9 @@
 import numpy as np
-import matplotlib_inline as plt
-
-import numpy as np
 import random
 import matplotlib.pyplot as plt
 from PIL import Image
 import glob
+import os
 #eta is a random number
 #delta is the amplitude of displacement
 #moves are accepted/rejected when particles overlap/are separate
@@ -72,12 +70,20 @@ r = 0.03
 a = np.pi*r**2
 points_radius = 2 * r / 1.0 * points_whole_ax
 # Setup
-
+### GIF ADDITION ###
+os.makedirs("frames", exist_ok=True)
+frame_index = 0
+total_steps = 20000   # number of MC attempts
+save_every = 100     # save a frame every N steps
+### EQUILIBRATION GIF SETUP ###
+os.makedirs("frames_equil", exist_ok=True)
+eq_frame_index = 0
+save_every_equil = 100     # save a frame every 100 steps
 d = 0.1
 L = 1.0
 
 # Random initial positions
-file = 'Coordinates.dat'
+#file = 'Coordinates.dat'
 #xvals = np.array([])
 #yvals = np.array([])
 
@@ -149,7 +155,7 @@ def pairCorrelationFunction_2D(x, y, L, rMax, dr):
             radius = np.sqrt(dx**2 + dy**2)
     
             if radius < rMax and radius>2*r:
-                bin_idx = int(radius / dr) # bin number
+                bin_idx = int(radius / dr) # bin number - what bin is the particle pair going to
                 if bin_idx < len(g_r): #ensures no over-counting
                     g_r[bin_idx] += 2  # Count for both i-j and j-i - this is just the number of particles at this point
     
@@ -162,51 +168,56 @@ def pairCorrelationFunction_2D(x, y, L, rMax, dr):
     
     return r_array, g_r
 
-def averaged_g_r(Nx, Ny, spacing, r, d, L, rMax, dr, num_sims=10, equil_steps=10000):
-    """Run multiple MC simulations and average g(r)"""
+def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims=10, equil_steps=10000):
+
     g_r_sum = None
-    
+
+    # Make copies so the original arrays are not modified
+    x_sim = np.copy(x)
+    y_sim = np.copy(y)
+
     for sim in range(num_sims):
-        # Initialize
-        x_sim = np.zeros(Nx*Ny)
-        y_sim = np.zeros(Nx*Ny)
-        index = 0
-        for i in range(Nx):
-            for j in range(Ny):
-                x_sim[index] = i * spacing + np.random.uniform(-0.01, 0.01)
-                y_sim[index] = j * spacing + np.random.uniform(-0.01, 0.01)
-                index += 1
-        x_sim /= max(x_sim)
-        y_sim /= max(y_sim)
-        
-        # Equilibrate
+        # Equilibrate: perform MC moves
         for step in range(equil_steps):
             x_sim, y_sim, _ = mc_move(x_sim, y_sim, r, d, L)
-        
-        # Calculate g(r)
+
+        # Compute g(r) for this snapshot
         r_vals, g_r_single = pairCorrelationFunction_2D(x_sim, y_sim, L, rMax, dr)
-        
+
+        # Accumulate
         if g_r_sum is None:
             g_r_sum = g_r_single
         else:
             g_r_sum += g_r_single
-    
-    return r_vals, g_r_sum / num_sims
+
+    # Average over snapshots
+    g_r_avg = g_r_sum / num_sims
+
+    return r_vals, g_r_avg
 
 
-# Perform 10000 MC moves
+
+# Perform 1000 MC moves
 overlaps = find_overlaps(x, y, r)
 print("there are", len(overlaps), "overlaps")
 accepted_moves = 0
-for step in range(10000):
+for step in range(1000):
     x, y, accepted = mc_move(x, y, r, d, L)
     if accepted:
         accepted_moves += 1
-    if step%1000 == 0 and step!=0:
+    if step%100 == 0 and step!=0:
         #print(step)
         #print(accepted_moves)
         acceptance_ratio = accepted_moves/step
         print("Acceptance ratio (no modification): ", acceptance_ratio)
+    if step % save_every_equil == 0:
+        plt.figure()
+        plt.scatter(x, y, s=points_radius**2)
+        plt.xlim(0, L); plt.ylim(0, L)
+        plt.title(f"Equilibration Step {step}")
+        plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
+        plt.close()
+        eq_frame_index += 1
         #can always modify this so it just does 1 cycle
 while acceptance_ratio>0.5 or acceptance_ratio<0.25:
     if acceptance_ratio>0.5:
@@ -216,6 +227,14 @@ while acceptance_ratio>0.5 or acceptance_ratio<0.25:
             x,y,accepted = mc_move(x,y,r,d,L)
             if accepted:
                 accepted_moves+=1
+            if j % save_every_equil == 0:
+                plt.figure()
+                plt.scatter(x, y, s=points_radius**2)
+                plt.xlim(0, L); plt.ylim(0, L)
+                plt.title(f"Tuning Step {j}")
+                plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
+                plt.close()
+                eq_frame_index += 1
         acceptance_ratio = accepted_moves/10000
         print("Acceptance ratio (large):", acceptance_ratio)
     if acceptance_ratio<0.25:
@@ -225,6 +244,14 @@ while acceptance_ratio>0.5 or acceptance_ratio<0.25:
             x,y,accepted = mc_move(x,y,r,d,L)
             if accepted:
                 accepted_moves+=1
+            if j % save_every_equil == 0:
+                plt.figure()
+                plt.scatter(x, y, s=points_radius**2)
+                plt.xlim(0, L); plt.ylim(0, L)
+                plt.title(f"Tuning Step {j}")
+                plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
+                plt.close()
+                eq_frame_index += 1
         acceptance_ratio = accepted_moves/10000
         print("Acceptance ratio (small):", acceptance_ratio)
 print("final acceptance ratio:", acceptance_ratio)
@@ -236,15 +263,17 @@ g_r_results = []
 print("\nCalculating g(r) for different dr values...")
 for dr in dr_values:
     print(f"  Computing with dr = {dr:.4f}...")
-    r_vals, g_r = averaged_g_r(Nx, Ny, spacing, r, d, L, L/2, dr, num_sims=10, equil_steps=10000)
+    r_vals, g_r = averaged_g_r(x,y,r,d,L,L/2,dr,num_sims=10, equil_steps=10000)
     g_r_results.append((r_vals, g_r, dr))
 
 
 plt.figure(figsize=(10, 4))
 
 plt.subplot(1, 2, 1)
-points_whole_ax = 5 * 0.8 * 72
-points_radius = 2 * r / 1.0 * points_whole_ax
+fig = plt.gcf()
+dpi = fig.get_dpi()
+marker_radius_points = r * min(fig.get_size_inches()) * dpi
+marker_area_points2 = (2 * marker_radius_points)**2
 plt.scatter(x, y, s=points_radius**2)
 plt.xlim(0, L)
 plt.ylim(0, L)
@@ -267,7 +296,39 @@ plt.legend()
 plt.show()
 
 
+### GIF BUILDING ###
+frames = []
+files = sorted(glob.glob("frames/*.png"))
 
+for f in files:
+    frames.append(Image.open(f))
+
+frames[0].save(
+    "simulation.gif",
+    save_all=True,
+    append_images=frames[1:],
+    duration=200,
+    loop=0
+)
+
+print("GIF saved as simulation.gif")
+
+### BUILD EQUILIBRATION GIF ###
+eq_frames = []
+files = sorted(glob.glob("frames_equil/*.png"))
+
+for f in files:
+    eq_frames.append(Image.open(f))
+
+eq_frames[0].save(
+    "equilibration.gif",
+    save_all=True,
+    append_images=eq_frames[1:],
+    duration=200,
+    loop=0
+)
+
+print("Equilibration GIF saved as equilibration.gif")
 print("optimal value of d: ", d)
 overlaps = find_overlaps(x, y, r)
 print("there are", len(overlaps), "overlaps")
