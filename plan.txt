@@ -1,0 +1,8 @@
+pair correlation function:
+
+g(r) = n(r)/rho2pirdr
+n(r) = number of particles in a shell of width dr
+
+how to actually detect particles in this ring
+
+then need to loop over different configurations to average the data

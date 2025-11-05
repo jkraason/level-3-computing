@@ -30,3 +30,7 @@ more detailed:
 generate x and y positions and plot them - set markersize to an amount such that there are some overlapped particles
 For i in range(0,len(x)):
     if x[i]
+
+Wed 05/11:
+Ask about pair correlation function and how to code it 
+Get gifs into the pair correlation code
