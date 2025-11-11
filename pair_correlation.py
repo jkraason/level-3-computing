@@ -16,6 +16,7 @@ def mc_move(x, y, r, d, L):
 
 
     # Pick a random particle
+
     i = np.random.randint(N)
     old_x = x[i]
     old_y = y[i]
@@ -52,6 +53,7 @@ def mc_move(x, y, r, d, L):
 
     dy_all = y[i] - y
     dy_all -= L * np.round(dy_all / L)
+
     dist2 = dx_all**2 + dy_all**2
     r_sum2 = 4*(r)**2
     dist2[i] = np.inf
@@ -79,7 +81,7 @@ save_every = 100     # save a frame every N steps
 os.makedirs("frames_equil", exist_ok=True)
 eq_frame_index = 0
 save_every_equil = 100     # save a frame every 100 steps
-d = 0.1
+d = 0.15
 L = 1.0
 
 # Random initial positions
@@ -168,7 +170,7 @@ def pairCorrelationFunction_2D(x, y, L, rMax, dr):
     
     return r_array, g_r
 
-def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims=10, equil_steps=10000):
+def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims, equil_steps):
 
     g_r_sum = None
 
@@ -196,122 +198,85 @@ def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims=10, equil_steps=10000):
     return r_vals, g_r_avg
 
 
-
 # Perform 1000 MC moves
 overlaps = find_overlaps(x, y, r)
 print("there are", len(overlaps), "overlaps")
 accepted_moves = 0
-for step in range(1000):
+for step in range(200000):
+    if step % 10000 == 0:
+        plt.figure()
+        plt.scatter(x, y, s=points_radius**2)
+        plt.xlabel('x', fontsize = 15)
+        plt.ylabel('y', fontsize = 15)
+        plt.xticks(fontsize = 15)
+        plt.yticks(fontsize = 15)
+        plt.xlim(0, L); plt.ylim(0, L)
+        plt.title(f"Equilibration Step {step}", fontsize = 15)
+        plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
+        plt.close()
+        eq_frame_index += 1
     x, y, accepted = mc_move(x, y, r, d, L)
     if accepted:
         accepted_moves += 1
-    if step%100 == 0 and step!=0:
+    if step%10000 == 0 and step!=0:
         #print(step)
         #print(accepted_moves)
         acceptance_ratio = accepted_moves/step
         print("Acceptance ratio (no modification): ", acceptance_ratio)
-    if step % save_every_equil == 0:
-        plt.figure()
-        plt.scatter(x, y, s=points_radius**2)
-        plt.xlim(0, L); plt.ylim(0, L)
-        plt.title(f"Equilibration Step {step}")
-        plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
-        plt.close()
-        eq_frame_index += 1
-        #can always modify this so it just does 1 cycle
+
+        
+#run simulation
+print("Acceptance ratio after 200,000 moves:", acceptance_ratio)
 while acceptance_ratio>0.5 or acceptance_ratio<0.25:
     if acceptance_ratio>0.5:
         accepted_moves=0
-        d = d*1.05
-        for j in range(0,10000):
+        d = d*1.05 
+        print("d=", d)
+        for j in range(0,200000):
             x,y,accepted = mc_move(x,y,r,d,L)
             if accepted:
                 accepted_moves+=1
-            if j % save_every_equil == 0:
-                plt.figure()
-                plt.scatter(x, y, s=points_radius**2)
-                plt.xlim(0, L); plt.ylim(0, L)
-                plt.title(f"Tuning Step {j}")
-                plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
-                plt.close()
-                eq_frame_index += 1
-        acceptance_ratio = accepted_moves/10000
+        acceptance_ratio = accepted_moves/1000
         print("Acceptance ratio (large):", acceptance_ratio)
     if acceptance_ratio<0.25:
         accepted_moves = 0
         d = d*0.95
-        for j in range(0,10000):
+        print("d =",d)
+        for j in range(0,200000):
             x,y,accepted = mc_move(x,y,r,d,L)
             if accepted:
                 accepted_moves+=1
-            if j % save_every_equil == 0:
-                plt.figure()
-                plt.scatter(x, y, s=points_radius**2)
-                plt.xlim(0, L); plt.ylim(0, L)
-                plt.title(f"Tuning Step {j}")
-                plt.savefig(f"frames_equil/eq_{eq_frame_index:04d}.png")
-                plt.close()
-                eq_frame_index += 1
-        acceptance_ratio = accepted_moves/10000
+        acceptance_ratio = accepted_moves/1000
         print("Acceptance ratio (small):", acceptance_ratio)
 print("final acceptance ratio:", acceptance_ratio)
 
+
+
 N = len(x)
 dr_values = [0.1*r,0.2*r,0.3*r,0.4*r,0.5*r]
+dr_text = ['δr = 0.1r', 'δr = 0.2r', 'δr = 0.3r', 'δr = 0.4r', 'δr = 0.5r']
 g_r_results = []
 
 print("\nCalculating g(r) for different dr values...")
 for dr in dr_values:
     print(f"  Computing with dr = {dr:.4f}...")
-    r_vals, g_r = averaged_g_r(x,y,r,d,L,L/2,dr,num_sims=10, equil_steps=10000)
+    r_vals, g_r = averaged_g_r(x,y,r,d,L,L/2,dr,num_sims=100, equil_steps=1000)
     g_r_results.append((r_vals, g_r, dr))
 
-
-plt.figure(figsize=(10, 4))
-
-plt.subplot(1, 2, 1)
+plt.figure(figsize=(5,5))
 fig = plt.gcf()
 dpi = fig.get_dpi()
-marker_radius_points = r * min(fig.get_size_inches()) * dpi
-marker_area_points2 = (2 * marker_radius_points)**2
-plt.scatter(x, y, s=points_radius**2)
-plt.xlim(0, L)
-plt.ylim(0, L)
-plt.xlabel('x')
-plt.ylabel('y')
-plt.title('Final Configuration')
-plt.gca().set_aspect('equal')
-
-plt.subplot(1, 2, 2)
-colors = ['blue', 'green', 'red', 'purple', 'orange']
-for i, (r_vals, g_r, dr) in enumerate(g_r_results):
-    plt.plot(r_vals, g_r, color=colors[i], linewidth=2, label=f'dr = {dr:.4f}')
+colors = ['grey', 'green', 'red', 'purple', 'orange', 'yellow']
+for i, (r_vals, g_r, dr) in enumerate(g_r_results):#enumerate removes the need for a counter variable - improves efficiency
+    plt.plot(r_vals, g_r, color=colors[i], linewidth=1, label = dr_text[i])
 
 plt.xlabel('r')
 plt.ylabel('g(r)')
 plt.title('Pair Correlation Function')
-plt.grid(True, alpha=0.3)
+plt.grid(False)
 plt.axhline(y=1, color='r', linestyle='--', alpha=0.5, label='Ideal gas')
 plt.legend()
 plt.show()
-
-
-### GIF BUILDING ###
-frames = []
-files = sorted(glob.glob("frames/*.png"))
-
-for f in files:
-    frames.append(Image.open(f))
-
-frames[0].save(
-    "simulation.gif",
-    save_all=True,
-    append_images=frames[1:],
-    duration=200,
-    loop=0
-)
-
-print("GIF saved as simulation.gif")
 
 ### BUILD EQUILIBRATION GIF ###
 eq_frames = []
@@ -335,6 +300,3 @@ print("there are", len(overlaps), "overlaps")
 print("Overlapping pairs:", overlaps)
 #plt.scatter(x,y,s=points_radius**2)
 #plt.show()
-
-
-
