@@ -224,7 +224,7 @@ for step in range(200000):
         acceptance_ratio = accepted_moves/step
         print("Acceptance ratio (no modification): ", acceptance_ratio)
 
-        
+
 #run simulation
 print("Acceptance ratio after 200,000 moves:", acceptance_ratio)
 while acceptance_ratio>0.5 or acceptance_ratio<0.25:
@@ -263,19 +263,21 @@ for dr in dr_values:
     r_vals, g_r = averaged_g_r(x,y,r,d,L,L/2,dr,num_sims=100, equil_steps=1000)
     g_r_results.append((r_vals, g_r, dr))
 
-plt.figure(figsize=(5,5))
+plt.figure(figsize=(6,6))
 fig = plt.gcf()
 dpi = fig.get_dpi()
 colors = ['grey', 'green', 'red', 'purple', 'orange', 'yellow']
 for i, (r_vals, g_r, dr) in enumerate(g_r_results):#enumerate removes the need for a counter variable - improves efficiency
     plt.plot(r_vals, g_r, color=colors[i], linewidth=1, label = dr_text[i])
 
-plt.xlabel('r')
-plt.ylabel('g(r)')
-plt.title('Pair Correlation Function')
+plt.xlabel('r', fontsize = 15)
+plt.ylabel('g(r)', fontsize = 15)
+plt.title('Pair Correlation Function', fontsize = 15)
+plt.xticks(fontsize = 15)
+plt.yticks(fontsize = 15)
 plt.grid(False)
 plt.axhline(y=1, color='r', linestyle='--', alpha=0.5, label='Ideal gas')
-plt.legend()
+plt.legend(prop={'size': 15})
 plt.show()
 
 ### BUILD EQUILIBRATION GIF ###

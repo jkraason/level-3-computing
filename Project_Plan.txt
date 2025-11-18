@@ -31,3 +31,87 @@ generate x and y positions and plot them - set markersize to an amount such that
 
 Metropolis algorithm:
 
+
+	def create_hexagonal_lattice(N, r, L):
+    """
+    Create a hexagonal lattice of N particles with radius r in a box of size L.
+    
+    Parameters:
+    -----------
+    N : int
+        Total number of particles (should be close to Nx*Ny for a grid)
+    r : float
+        Particle radius
+    L : float
+        Box size (periodic boundaries from 0 to L)
+    
+    Returns:
+    --------
+    x, y : numpy arrays
+        Particle positions
+    spacing : float
+        The spacing used between particle centers
+    """
+    
+    # Hexagonal lattice spacing
+    # For hard disks, minimum spacing is 2*r (touching)
+    # We'll use slightly more than 2*r to avoid overlaps
+    spacing = 2.0 * r * 1.01  # 1% buffer to ensure no overlaps
+    
+    # Hexagonal lattice geometry
+    dx = spacing
+    dy = spacing * np.sqrt(3) / 2  # vertical spacing for hex lattice
+    
+    # Calculate how many particles fit
+    Nx = int(L / dx)
+    Ny = int(L / dy)
+    
+    # Adjust if we need exactly N particles
+    # (This will get approximately N particles)
+    if Nx * Ny < N:
+        # Need tighter packing
+        spacing = 2.0 * r * 1.001
+        dx = spacing
+        dy = spacing * np.sqrt(3) / 2
+        Nx = int(L / dx)
+        Ny = int(L / dy)
+    
+    x = []
+    y = []
+    
+    for i in range(Ny):
+        for j in range(Nx):
+            # x position: shift every other row by dx/2 for hexagonal packing
+            x_pos = j * dx + (i % 2) * (dx / 2)
+            y_pos = i * dy
+            
+            # Apply periodic boundary conditions
+            x_pos = x_pos % L
+            y_pos = y_pos % L
+            
+            # Only add if within bounds (with margin for particle radius)
+            if x_pos >= 0 and x_pos < L and y_pos >= 0 and y_pos < L:
+                x.append(x_pos)
+                y.append(y_pos)
+            
+            if len(x) >= N:
+                break
+        if len(x) >= N:
+            break
+    
+    # Center the lattice in the box
+    x = np.array(x[:N])
+    y = np.array(y[:N])
+    
+    # Center the configuration
+    x_center = (x.max() + x.min()) / 2
+    y_center = (y.max() + y.min()) / 2
+    
+    x = x - x_center + L / 2
+    y = y - y_center + L / 2
+    
+    # Apply periodic boundaries
+    x = x % L
+    y = y % L
+    
+    return x, y, spacing
