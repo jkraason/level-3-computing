@@ -11,29 +11,7 @@ import os
 #this code is assuming no overlap between particles - purely for generating the moves
 
 def create_hexagonal_lattice(N, r, L):
-    """
-    Create a hexagonal lattice of N particles with radius r in a box of size L.
     
-    Parameters:
-    -----------
-    N : int
-        Total number of particles (should be close to Nx*Ny for a grid)
-    r : float
-        Particle radius
-    L : float
-        Box size (periodic boundaries from 0 to L)
-    
-    Returns:
-    --------
-    x, y : numpy arrays
-        Particle positions
-    spacing : float
-        The spacing used between particle centers
-    """
-    
-    # Hexagonal lattice spacing
-    # For hard disks, minimum spacing is 2*r (touching)
-    # We'll use slightly more than 2*r to avoid overlaps
     spacing = 2.0 * r * 1.01  # 1% buffer to ensure no overlaps
     
     # Hexagonal lattice geometry
@@ -153,7 +131,7 @@ os.makedirs("frames_equil", exist_ok=True)
 eq_frame_index = 0
 save_every_equil = 100     # save a frame every 100 steps
 d = 0.02
-dr = 0.4*r
+dr = 0.1*r
 
 Nx = 10
 Ny = 10
@@ -295,8 +273,6 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
         if accepted:
             accepted_moves += 1
         if step%10000 == 0 and step!=0:
-            #print(step)
-            #print(accepted_moves)
             acceptance_ratio = accepted_moves/step
             print("Acceptance ratio (no modification): ", acceptance_ratio)
 
@@ -325,7 +301,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             acceptance_ratio = accepted_moves/10000
             print("Acceptance ratio (small):", acceptance_ratio)
     print("final acceptance ratio:", acceptance_ratio)
-    r_vals, g_r = averaged_g_r(x, y, r, d, L, 10*r, 0.3*r, 50000, 1000)
+    r_vals, g_r = averaged_g_r(x, y, r, d, L, 10*r, dr, 500000, 1000)
     
     # Build GIF for this density
     eq_frames = []
@@ -344,13 +320,14 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
         print(f"Saved GIF: equilibration_eta_{densities[density_idx]:.2f}.gif")
     
     # Plot for this L value
-    plt.plot(r_vals/(2*r), g_r, color=color, linewidth=2, label=f'$\eta$ = {densities[k]}')
+    plt.plot(r_vals/(2*r), g_r, color=color, linewidth=2, label=f'$\eta$ = '+str(format(densities[k], ".2f")))
     k=k+1
-plt.xlabel('r/σ')
-plt.ylabel('g(r)')
-plt.title('Pair Correlation Function for Different Box Sizes')
+plt.xlabel('r/σ',fontsize = 15)
+plt.ylabel('g(r)',fontsize = 15)
+plt.xticks(fontsize = 15)
+plt.yticks(fontsize = 15)
 plt.axhline(y=1, color='black', linestyle='--', alpha=0.5, label='Ideal gas')
-plt.legend()
+plt.legend(prop={'size': 15})
 plt.savefig("multiple_L_g_r.png", dpi=300, bbox_inches='tight')
 plt.show()
 
@@ -358,5 +335,3 @@ print("optimal value of d: ", d)
 overlaps = find_overlaps(x, y, r,L)
 print("there are", len(overlaps), "overlaps")
 print("Overlapping pairs:", overlaps)
-#plt.scatter(x,y,s=points_radius**2)
-#plt.show()
