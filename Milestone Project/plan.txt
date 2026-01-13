@@ -1,0 +1,22 @@
+pair correlation function:
+
+g(r) = n(r)/rho2pirdr
+n(r) = number of particles in a shell of width dr
+
+how to actually detect particles in this ring
+
+then need to loop over different configurations to average the data
+
+Milestone final step:
+
+N=100 particles
+n = (N(pi)(2r)^2)/4L^2
+want n to equal 0.68 - get value of L such that n = 0.68
+L = 
+
+expect interesting peak for high density 0.72
+
+get r axis in terms of diameter
+get rid of dr loop and replace with L loop
+decide on how to extend - lennard jones potential
+
