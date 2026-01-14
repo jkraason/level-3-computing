@@ -1,0 +1,26 @@
+STEP 1: Potentials
+
+Caculate U_LJ for the initial configuration
+Calculate a monte-carlo move
+Calculate U_LJ again for the new system
+
+IF U_LJ2<U_LJ1: 
+    reject move
+
+IF U_LJ2>U_LJ1:
+    accept move if rand < exp[(U_LJ1-U_LJ2)/k_bT]
+    U_LJ1 = U_LJ2
+    calculate energy again - reuse for next mc move
+
+RUN until equilibrated
+
+Similar steps for WCA (except if distance between particles is greater than 2^(1/6)sigma, those contributions are ignored)
+
+
+STEP 2: 3D extension
+
+Hard sphere, U_LJ and U_WCA must be converted to 3D
+mc moves must have a z direction
+g(r) is different in 3D
+graphs - need to represent in 3D somehow (may need some help...)
+
