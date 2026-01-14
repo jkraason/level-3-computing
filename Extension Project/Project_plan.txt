@@ -1,0 +1,19 @@
+How does the nature of the interparticle potential and dimension affect the solid–fluid transition?
+
+Hard Sphere potential - see milestone project for 2D
+
+Lennard-Jones Potential:
+Models Van-der-Waals interactions
+U_LJ = 4*e*((s/r)**(12)-(s/r)**6)
+This is true for all r (so there is a repulsive AND attractive nature to this potential)
+Particles attract at moderate distances
+
+WCA Potential:
+Repulsive part of LJ potential only - equal to zero at r>=2^(1/6)s 
+
+Key notes about parameters:
+e = depth of potential well (energy scale)
+sigma = particle diameter
+
+calculate g(r) 
+phi_6 and Q6 to determine the order in 2D and 3D respectively - needs more research
