@@ -111,9 +111,9 @@ save_every = 100     # save a frame every N steps
 #os.makedirs("frames_equil", exist_ok=True)
 eq_frame_index = 0
 save_every_equil = 100     # save a frame every 100 steps
-d = 0.002
+d = 0.01
 dr = 0.1*r
-Nx = Ny = Nz = 4
+Nx = Ny = Nz = 3
 N = 4*Nx*Ny*Nz
 densities = np.array([0.68])
 L_values = ((N*np.pi*(2*r)**3)/(6*(densities)))**(1/3)
@@ -147,6 +147,21 @@ def find_overlaps(x, y,z, r, L):  # Added L parameter
                 overlaps.append((i, j))
     return overlaps
 
+def sphere_function(xcentre, ycentre, zcentre,r):
+    #draw sphere
+    u,v = np.meshgrid(np.linspace(0,np.pi,51),np.linspace(0,2*np.pi, 101))
+    x = np.cos(u)*np.sin(v)
+    y = np.sin(u)*np.sin(v)
+    z = np.cos(v)
+    #print("x, y, z", x,y,z)
+    #shift and scale sphere
+    x = r*x + xcentre
+    y = r*y + ycentre
+    z = r*z + zcentre
+    #print(x1,y1,z1)
+    return x,y,z
+
+
 def save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle=None):
     """
     Save a 3D scatter plot of particles inside a cubic box for a GIF.
@@ -166,13 +181,15 @@ def save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle=N
     angle : float or None
         Elevation/azimuth rotation for 3D view (optional)
     """
-    fig = plt.figure(figsize=(8,6))
+    fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
 
     # Particle scatter
-    points_radius = 2 * r / 1.0 * points_whole_ax  # same as before
-    ax.scatter(x, y, z, s=points_radius**2, c='blue', alpha=0.6)
+    points_radius = 2 * r / 1.0 * points_whole_ax 
 
+    for i in range (0,len(x)):
+        xs,ys,zs = sphere_function(x[i],y[i],z[i],r) # same as before
+        ax.plot_surface(xs, ys, zs, cmap = 'viridis')
     # Draw box edges
     # 8 corners of the cube
     corners = np.array([
@@ -207,10 +224,10 @@ def save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle=N
     ax.set_zlim(0, L)
     ax.set_box_aspect([1,1,1])  # keep cube proportions
 
-    ax.set_xlabel('x', fontsize=12)
-    ax.set_ylabel('y', fontsize=12)
-    ax.set_zlabel('z', fontsize=12)
-    ax.set_title(f"η = {densities[density_idx]:.2f}, Step {step}", fontsize=15)
+    ax.set_xlabel('x', fontsize=20)
+    ax.set_ylabel('y', fontsize=20)
+    ax.set_zlabel('z', fontsize=20)
+    ax.set_title(f"η = {densities[density_idx]:.2f}, Step {step}", fontsize=20)
 
     # Rotate view for better 3D perception
     if angle is not None:
@@ -298,7 +315,6 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
     #lattice - initialise for each L
     print(f"\n=== Running simulation for L = {L} ===")
     r = 0.03
-    d = 0.002
     
     # Create hexagonal lattice
     x, y, z, spacing = fcc_lattice(N, r, L)
@@ -307,7 +323,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
     overlaps = find_overlaps(x, y, z, r, L)
     print(f"L={L:.3f}: {len(overlaps)} overlaps, spacing={spacing:.4f}")
     print(f"All particles in box: {np.all((x >= 0) & (x < L) & (y >= 0) & (y < L))}")
-    for step in range(1000000):
+    for step in range(10000000):
         if step % 100000 == 0:
             angle = (step // save_every) * 10  # rotate 10° per frame
             save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
