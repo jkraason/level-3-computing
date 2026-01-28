@@ -119,7 +119,7 @@ Nx = 10
 Ny = 10
 N = Nx * Ny
 
-densities = np.array([0.68, 0.69, 0.70, 0.71, 0.72])
+densities = np.array([0.68, 0.69, 0.70, 0.71, 0.72, 0.73, 0.74])
 L_values = np.sqrt((N*np.pi*(2*r)**2)/(4*(densities)))
 
 def find_overlaps(x, y, r, L):
@@ -197,75 +197,6 @@ def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims, sample):
     
     return r_array, g_r_avg
 
-def calculate_marker_size(r, L, figsize=8, dpi=100):
-    """
-    Calculate proper marker size for circles with radius r in box of size L.
-    
-    The key is: marker size in scatter() is AREA in points^2.
-    We want the visual diameter to be proportional to 2r/L.
-    
-    Parameters:
-    r: radius of particles (data units)
-    L: box size (data units)
-    figsize: figure size in inches
-    dpi: dots per inch
-    
-    Returns:
-    marker_size: area in points^2 for scatter()
-    """
-    # Convert radius to diameter
-    diameter = 2 * r
-    
-    # What fraction of the figure width should the diameter occupy?
-    # For clear visibility, make particles occupy about 1/20th of figure width
-    fraction_of_figure = diameter / L
-    
-    # Figure width in points (1 inch = 72 points)
-    figure_width_points = figsize * 72
-    
-    # Desired diameter in points
-    desired_diameter_points = fraction_of_figure * figure_width_points * 2.0  # Multiplier for visibility
-    
-    # Marker size is AREA in points^2 (π*(diameter/2)^2)
-    # But matplotlib's scatter uses area, so we use diameter^2
-    marker_size = (desired_diameter_points ** 2)
-    
-    return marker_size
-
-# Alternative: Simple visual scaling
-def get_visual_marker_size(r, L):
-    """
-    Simple visual scaling that works well for r=0.03
-    """
-    # Base size for good visibility
-    base_size = 5000
-    
-    # Scale by (2r/L) to maintain relative size
-    relative_size = (2 * r) / L
-    
-    # Additional scaling factor for visibility
-    visibility_factor = 20  # Makes circles clearly visible
-    
-    marker_size = base_size * relative_size * visibility_factor
-    
-    return marker_size
-
-# Even simpler: Hardcoded values that work
-def get_good_marker_size_for_r_003(L):
-    """
-    Returns marker sizes that work well for r=0.03
-    These are empirically determined
-    """
-    if L < 0.5:
-        return 5000
-    elif L < 1.0:
-        return 3000
-    elif L < 1.5:
-        return 2000
-    elif L < 2.0:
-        return 1500
-    else:
-        return 1000
 
 accepted_moves = 0
 colors = ['red', 'blue', 'green', 'orange', 'purple']
@@ -296,10 +227,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
 
     overlaps = find_overlaps(x, y, r, L)
     print("there are", len(overlaps), "overlaps")
-    
-    # Calculate marker size - using the simple function
-    marker_size = get_good_marker_size_for_r_003(L)
-    print(f"Box size L={L:.3f}, using marker size={marker_size:.0f}")
+
     
     for step in range(200001):
         if step % 10000 == 0:
@@ -307,17 +235,10 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             ax = plt.gca()
             
             # Plot with calculated marker size
-            plt.scatter(x, y, s=marker_size, c='blue', edgecolors='black', 
-                       linewidth=1.5, alpha=0.8, zorder=2)
-            
-            # Also plot actual circles for verification (optional)
-            plot_circles = True
-            if plot_circles and step == 0:  # Only for first frame
-                for xi, yi in zip(x, y):
-                    circle = plt.Circle((xi, yi), r, color='red', fill=False, 
-                                       linestyle='--', linewidth=1, alpha=0.5, zorder=1)
-                    ax.add_patch(circle)
-            
+            # print([x[0],y[0]])
+            for j in range(len(x)):
+                draw_circle = plt.Circle((x[j],y[j]),r,color = 'blue', ec = 'black', fill = True, alpha = 0.8, zorder = 10, linewidth = 2.0)
+                ax.add_patch(draw_circle)
             plt.xlabel('x', fontsize = 20)
             plt.ylabel('y', fontsize = 20)
             plt.xticks(fontsize = 20)
@@ -325,9 +246,9 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             plt.xlim(0, L)
             plt.ylim(0, L)
             ax.set_aspect('equal', adjustable='box')
-            ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+            ax.grid(False, alpha=0.3, linestyle='--', linewidth=0.5)
             plt.title(f"η = {densities[density_idx]:.2f}, L = {L:.3f}, Step {step}\nParticle radius r = {r}", fontsize = 20)
-            
+            print(f"{frames_dir}/eq_{eq_frame_index:04d}.png")
             plt.savefig(f"{frames_dir}/eq_{eq_frame_index:04d}.png", dpi=150, bbox_inches='tight')
             plt.close()
             eq_frame_index += 1
@@ -397,50 +318,3 @@ print("optimal value of d: ", d)
 overlaps = find_overlaps(x, y, r, L)
 print("there are", len(overlaps), "overlaps")
 print("Overlapping pairs:", overlaps)
-
-# Create a demo plot with different marker sizes to find the right one
-print("\n" + "="*60)
-print("DEMONSTRATION OF DIFFERENT MARKER SIZES")
-print("="*60)
-
-# Create test configuration
-test_L = 1.0
-test_r = 0.03
-test_N = 16
-
-# Simple grid
-x_test = np.linspace(test_r*2, test_L-test_r*2, 4)
-y_test = np.linspace(test_r*2, test_L-test_r*2, 4)
-X_test, Y_test = np.meshgrid(x_test, y_test)
-x_test = X_test.ravel()
-y_test = Y_test.ravel()
-
-# Test different marker sizes
-marker_sizes_to_test = [100, 500, 1000, 2000, 5000, 10000]
-
-fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-axes = axes.flatten()
-
-for idx, marker_size in enumerate(marker_sizes_to_test):
-    ax = axes[idx]
-    
-    # Plot with current marker size
-    ax.scatter(x_test, y_test, s=marker_size, c='blue', 
-              edgecolors='black', linewidth=1, alpha=0.8)
-    
-    # Add actual circles for comparison
-    for xi, yi in zip(x_test, y_test):
-        circle = plt.Circle((xi, yi), test_r, color='red', 
-                          fill=False, linestyle='--', linewidth=1, alpha=0.5)
-        ax.add_patch(circle)
-    
-    ax.set_xlim(0, test_L)
-    ax.set_ylim(0, test_L)
-    ax.set_aspect('equal', adjustable='box')
-    ax.grid(True, alpha=0.3)
-    ax.set_title(f'Marker size = {marker_size}\n(r={test_r}, L={test_L})', fontsize=10)
-    
-    # Check if scatter markers match circle outlines
-    ax.text(0.05, 0.95, f'Size {marker_size}', transform=ax.transAxes,
-           fontsize=9, verticalalignment='top',
-           bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))

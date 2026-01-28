@@ -115,7 +115,7 @@ d = 0.01
 dr = 0.1*r
 Nx = Ny = Nz = 3
 N = 4*Nx*Ny*Nz
-densities = np.array([0.68])
+densities = np.array([0.545])
 L_values = ((N*np.pi*(2*r)**3)/(6*(densities)))**(1/3)
 
 #plt.scatter(x,y,s=points_radius**2)
@@ -183,6 +183,7 @@ def save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle=N
     """
     fig = plt.figure(figsize=(10,10))
     ax = fig.add_subplot(111, projection='3d')
+    ax.grid(False)
 
     # Particle scatter
     points_radius = 2 * r / 1.0 * points_whole_ax 
@@ -325,7 +326,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
     print(f"All particles in box: {np.all((x >= 0) & (x < L) & (y >= 0) & (y < L))}")
     for step in range(10000000):
         if step % 100000 == 0:
-            angle = (step // save_every) * 10  # rotate 10° per frame
+            angle = (400000 // save_every) * 10  # rotate 10° per frame
             save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
             eq_frame_index += 1
         x, y, z, accepted = mc_move(x, y, z, r, d, L)
