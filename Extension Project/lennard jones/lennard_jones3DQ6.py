@@ -261,6 +261,7 @@ plt.ylabel("Global $Q_6$")
 plt.title("Bond-orientational order vs MC steps")
 plt.legend()
 plt.tight_layout()
+plt.savefig("Q6_LJ.png")
 plt.show()
 
 # ================================
