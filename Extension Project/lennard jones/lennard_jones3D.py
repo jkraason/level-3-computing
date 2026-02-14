@@ -1,17 +1,36 @@
-#for putting all of the functions together
 import numpy as np
 import random
 import matplotlib.pyplot as plt
 from PIL import Image
-import glob
 import os
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt  # needed for 3D plotting
-#eta is a random number
-#delta is the amplitude of displacement
-#moves are accepted/rejected when particles overlap/are separate
-#this code is assuming no overlap between particles - purely for generating the moves
+import glob
+#  SYSTEM PARAMETERS
 
+N=100
+
+r = 0.03
+sigma = 2 * r
+epsilon = 1.0
+
+kB = 1.0
+T = 1.0
+beta = 1.0 / (kB * T)
+
+densities = np.array([0.46,0.50,0.54,0.58,0.62,0.66])
+L_values = ((N*np.pi*(2*r)**3)/(6*(densities)))**(1/3)
+colors = ['red', 'blue', 'green', 'purple']
+
+dr = 0.1 * r
+rcut = 10*r
+
+initial_d = 0.03
+points_whole_ax = 5 * 0.8 * 72 
+
+save_every = 100
+
+# ============================================================
+#  HEXAGONAL LATTICE
+# ============================================================
 
 def fcc_lattice(N, r, L, tol=1e-8):
     if N % 4 != 0:
@@ -50,101 +69,62 @@ def fcc_lattice(N, r, L, tol=1e-8):
 
     return coords[:,0], coords[:,1], coords[:,2], spacing
 
+# ============================================================
+#  LJ POTENTIAL (SHIFTED)
+# ============================================================
 
+def lj_potential(r, sigma, epsilon=1.0):
+    sr6 = (sigma / r) ** 6
+    return 4 * epsilon * (sr6**2 - sr6)
 
-def mc_move(x, y, z, r, d, L):
-    N = len(x)
-    r = 0.03
+def lj_shifted(r, sigma, rcut):
+    if r >= rcut:
+        return 0.0
+    return lj_potential(r, sigma) - lj_potential(rcut, sigma)
 
-    # Pick a random particle
-    i = np.random.randint(N)
-    old_x = x[i]
-    old_y = y[i]
-    old_z = z[i]
+# ============================================================
+#  METROPOLIS MC MOVE (LOCAL ΔU)
+# ============================================================
 
-    # Propose move
-    dx = d * (np.random.random_sample() - 0.5)
-    dy = d * (np.random.random_sample() - 0.5)
-    dz = d * (np.random.random_sample() - 0.5)
-    # Apply move with periodic boundaries
-    new_x = (x[i] + dx) % L
-    new_y = (y[i] + dy) % L
-    new_z = (z[i] + dz) % L
-    # Temporarily update position for overlap check
-    x[i] = new_x
-    y[i] = new_y
-    z[i] = new_z
+def mc_move_lj(x, y, z, d, L, sigma, rcut, beta):
+    i = np.random.randint(len(x))
+    old_x, old_y, old_z = x[i], y[i], z[i]
 
-    # Compute distances to all other particles with periodic boundaries
-    dx_all = x[i] - x
-    dx_all -= L * np.round(dx_all / L)
+    new_x = (old_x + d * (random.random() - 0.5)) % L
+    new_y = (old_y + d * (random.random() - 0.5)) % L
+    new_z = (old_z + d * (random.random() - 0.5)) % L
 
-    dy_all = y[i] - y
-    dy_all -= L * np.round(dy_all / L)
+    dU = 0.0
 
-    dz_all = z[i] - z
-    dz_all -= L * np.round(dz_all / L)
+    for j in range(len(x)):
+        if j == i:
+            continue
 
-    dist2 = dx_all**2 + dy_all**2 + dz_all**2
-    r_sum2 = 4*(r)**2
-    dist2[i] = np.inf  # ignore self
-    
-    # Check for overlap
-    if np.any(dist2 < r_sum2):
-        # Reject move → restore old position
-        x[i], y[i], z[i] = old_x, old_y, old_z
-        return x, y, z, False
+        dx = old_x - x[j]
+        dy = old_y - y[j]
+        dz = old_z - z[j]
+        dx -= L * np.round(dx / L)
+        dy -= L * np.round(dy / L)
+        dz -= L * np.round(dz / L)
+        r_old = np.sqrt(dx*dx + dy*dy + dz*dz)
 
-    return x, y, z, True
+        dx = new_x - x[j]
+        dy = new_y - y[j]
+        dz = new_z - z[j]
+        dx -= L * np.round(dx / L)
+        dy -= L * np.round(dy / L)
+        dz -= L * np.round(dz / L)
+        r_new = np.sqrt(dx*dx + dy*dy + dz*dz)
 
-points_whole_ax = 5 * 0.8 * 72    # 1 point = dpi / 72 pixels
-r = 0.03
-a = np.pi*r**2
-points_radius = 2 * r / 1.0 * points_whole_ax
-# Setup
-### GIF ADDITION ###
-#os.makedirs("frames", exist_ok=True)
-frame_index = 0  # number of MC attempts
-save_every = 100     # save a frame every N steps
-### EQUILIBRATION GIF SETUP ###
-#os.makedirs("frames_equil", exist_ok=True)
-eq_frame_index = 0
-save_every_equil = 100     # save a frame every 100 steps
-d = 0.01
-dr = 0.1*r
-Nx = Ny = Nz = 3
-N = 4*Nx*Ny*Nz
-densities = np.array([0.49,0.51,0.53,0.55])
-L_values = ((N*np.pi*(2*r)**3)/(6*(densities)))**(1/3)
+        if r_old < rcut:
+            dU -= lj_shifted(r_old, sigma, rcut)
+        if r_new < rcut:
+            dU += lj_shifted(r_new, sigma, rcut)
 
-#plt.scatter(x,y,s=points_radius**2)
-def find_overlaps(x, y,z, r, L):  # Added L parameter
-    x = np.asarray(x)
-    y = np.asarray(y)
-    z = np.asarray(z)
-    r = np.asarray(r)
-
-    N = len(x)
-    overlaps = []
-
-    # Handle single radius case
-    if r.ndim == 0:
-        r = np.full(N, r)
-
-    for i in range(N):
-        for j in range(i+1, N): # Changed to avoid double counting   # Use periodic boundary conditions
-            dx = x[i] - x[j]
-            dy = y[i] - y[j]
-            dz = z[i] - z[j]
-                
-            dx -= L * np.round(dx / L)
-            dy -= L * np.round(dy / L)
-            dz -= L * np.round(dz / L)
-                
-            dist = np.sqrt(dx**2 + dy**2 + dz**2)
-            if dist < (r[i] + r[j]):
-                overlaps.append((i, j))
-    return overlaps
+    if dU <= 0 or random.random() < np.exp(-beta * dU):
+        x[i], y[i], z[i] = new_x, new_y, new_z
+        return x,y,z,True
+    return x,y,z,False
 
 def sphere_function(xcentre, ycentre, zcentre,r):
     #draw sphere
@@ -159,7 +139,6 @@ def sphere_function(xcentre, ycentre, zcentre,r):
     z = r*z + zcentre
     #print(x1,y1,z1)
     return x,y,z
-
 
 def save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle=None):
     """
@@ -237,44 +216,41 @@ def save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle=N
     plt.savefig(f"{frames_dir}/eq_{eq_frame_index:04d}.png")
     plt.close()
 
-def pairCorrelationFunction_3D(x, y, z, L, rMax, dr):
-    rho = N/L**3
+# ============================================================
+#  RDF
+# ============================================================
 
-    nBins = int(rMax / dr)
-    r_array = np.arange(dr/2, rMax, dr)  # bin centers
-    g_r = np.zeros(len(r_array))  # will store g(r) values
-    
-    # Compute distances and bin them
-    for i in range(N):
-        for j in range(i+1, N):  # Only j > i to avoid double counting
-            # Periodic boundary conditions
+def pairCorrelationFunction_3D(x, y, z, L, rMax, dr):
+    rho = len(x) / L**2
+    r_vals = np.arange(dr/2, rMax, dr)
+    g = np.zeros_like(r_vals)
+
+    for i in range(len(x)):
+        for j in range(i+1, len(x)):
             dx = x[i] - x[j]
             dy = y[i] - y[j]
             dz = z[i] - z[j]
-            
             dx -= L * np.round(dx / L)
             dy -= L * np.round(dy / L)
             dz -= L * np.round(dz / L)
-            radius = np.sqrt(dx**2 + dy**2 + dz**2)
-    
-            if radius < rMax and radius>2*r:
-                bin_idx = int(radius / dr) # bin number - what bin is the particle pair going to
-                if bin_idx < len(g_r): #ensures no over-counting
-                    g_r[bin_idx] += 2  # Count for both i-j and j-i - this is just the number of particles at this point
-    
-    # Normalize by ideal gas
-    for i, r_val in enumerate(r_array):
-        # Ideal number in shell: n_ideal = rho * 2*pi*r*dr
-        n_ideal = rho * 4 * np.pi * (r_val)**2 * dr
-        # Divide by N (total particles) and by n_ideal
-        g_r[i] /= (N*n_ideal)
-    
-    return r_array, g_r
+            r = np.sqrt(dx*dx + dy*dy + dz*dz)
+            if r < rMax:
+                g[int(r/dr)] += 2
+
+    for i, r in enumerate(r_vals):
+        shell = 2 * np.pi * r * dr
+        g[i] /= rho * len(x) * shell
+
+    return r_vals, g
+
+# ============================================================
+#  MAIN SIMULATION
+# ============================================================
 
 def averaged_g_r(x, y,z, r, d, L, rMax, dr, num_sims, sample, equil_steps=0, block_size=5):
     g_samples = []
     for i in range(num_sims):
-        x, y, z, _ = mc_move(x, y, z, r, d, L)
+        x, y, z, _ = mc_move_lj(x, y, z, r, d, L)
         if i < equil_steps:
             continue
         if i % sample == 0:
@@ -311,19 +287,15 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
     print(f"\n=== Running simulation for L = {L} ===")
     r = 0.03
     
-    # Create hexagonal lattice
+    # Create fcc lattice
     x, y, z, spacing = fcc_lattice(N, r, L)
     
-    # Verify no overlaps and all particles in box
-    overlaps = find_overlaps(x, y, z, r, L)
-    print(f"L={L:.3f}: {len(overlaps)} overlaps, spacing={spacing:.4f}")
-    print(f"All particles in box: {np.all((x >= 0) & (x < L) & (y >= 0) & (y < L))}")
     for step in range(10000000):
         if step % 100000 == 0:
             angle = (400000 // save_every) * 10  # rotate 10° per frame
             save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
             eq_frame_index += 1
-        x, y, z, accepted = mc_move(x, y, z, r, d, L)
+        x, y, z, accepted = mc_move_lj(x, y, z, r, d, L)
         if accepted:
             accepted_moves += 1
         if step%100000 == 0 and step!=0:
@@ -339,7 +311,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             d = d*1.05 
             print("d=", d)
             for j in range(0,10000):
-                x,y,z,accepted = mc_move(x,y,z,r,d,L)
+                x,y,z,accepted = mc_move_lj(x,y,z,r,d,L)
                 if accepted:
                     accepted_moves+=1
             acceptance_ratio = accepted_moves/10000
@@ -349,7 +321,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             d = d*0.95
             print("d =",d)
             for j in range(0,10000):
-                x,y,z,accepted = mc_move(x,y,z,r,d,L)
+                x,y,z,accepted = mc_move_lj(x,y,z,r,d,L)
                 if accepted:
                     accepted_moves+=1
             acceptance_ratio = accepted_moves/10000
@@ -389,10 +361,3 @@ plt.legend()
 plt.tight_layout()
 plt.savefig("3D g(r) error bands.png")
 plt.show()
-
-print("optimal value of d: ", d)
-overlaps = find_overlaps(x, y, z, r,L)
-print("there are", len(overlaps), "overlaps")
-print("Overlapping pairs:", overlaps)
-#plt.scatter(x,y,s=points_radius**2)
-#plt.show()

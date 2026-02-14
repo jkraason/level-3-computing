@@ -16,8 +16,8 @@ kB = 1.0
 T = 1.0
 beta = 1.0 / (kB * T)
 
-densities = np.array([0.68])
-colors = ['red', 'blue', 'green', 'purple']
+densities = np.array([0.65,0.70,0.725,0.75,0.80])
+colors = ['red', 'blue', 'green', 'purple', 'orange']
 
 dr = 0.1 * r
 rcut = 10*r
@@ -167,12 +167,34 @@ def pairCorrelationFunction_2D(x, y, L, rMax, dr):
 
     return r_vals, g
 
+def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims, sample, equil_steps=0, block_size=5):
+    g_samples = []
+    for i in range(num_sims):
+        x, y, _ = mc_move_lj(x, y, r, d, L)
+        if i < equil_steps:
+            continue
+        if i % sample == 0:
+            _, g_r_current = pairCorrelationFunction_2D(x, y, L, rMax, dr)
+            g_samples.append(g_r_current)
+    g_samples = np.array(g_samples)
+    n_samples, n_bins = g_samples.shape
+    n_blocks = n_samples // block_size
+    trimmed = g_samples[:n_blocks*block_size]
+    blocks = trimmed.reshape(n_blocks, block_size, n_bins)
+    block_means = blocks.mean(axis=1)
+    g_mean = block_means.mean(axis=0)
+    g_var = np.var(block_means, axis=0, ddof=1)
+    g_err = np.sqrt(g_var / n_blocks)
+    r_array = np.arange(dr/2, rMax, dr)
+    return r_array, g_mean, g_err
+
 # ============================================================
 #  MAIN SIMULATION
 # ============================================================
 
 plt.figure(figsize=(10, 8))
-
+rMax = 10*r
+k=0
 for idx, density in enumerate(densities):
 
     L = np.sqrt((N * np.pi * sigma**2) / (4 * density))
@@ -220,22 +242,13 @@ for idx, density in enumerate(densities):
     # ============================
     # RDF AVERAGING
     # ============================
+    r_vals, g_mean, g_err = averaged_g_r(x,y,r,d,L,rMax,dr,500_000, 1000,equil_steps = 0, block_size=5)
 
-    g_sum = None
-    samples = 0
-
-    for step in range(500_000):
-        mc_move_lj(x, y, d, L, sigma, rcut, beta)
-        if step % 1000 == 0:
-            r_vals, g = pairCorrelationFunction_2D(x, y, L, L/2, dr)
-            if g_sum is None:
-                g_sum = np.zeros_like(g)
-            g_sum += g
-            samples += 1
-
-    plt.plot(r_vals/sigma, g_sum/samples,
-             lw=2, color=colors[idx],
-             label=f"$\\eta={density:.2f}$")
+    # Plot g(r) with error bands
+    xplot = r_vals / (2*r)
+    plt.plot(xplot, g_mean, color=colors[k], linewidth=2, label=fr'$\eta={densities[k]:.2f}$')
+    plt.fill_between(xplot, g_mean - g_err, g_mean + g_err, color=colors[k], alpha=0.3)
+    k=k+1
 
 # ============================================================
 #  FINAL PLOT

@@ -144,7 +144,7 @@ d = 0.02
 dr = 0.1*r
 Nx = Ny = 10
 N = Nx * Ny
-densities = np.array([0.72])
+densities = np.array([0.65,0.69,0.71,0.73,0.77])
 L_values = np.sqrt((N*np.pi*(2*r)**2)/(4*densities))
 colors = ['red','blue','green','orange','purple']
 
