@@ -119,7 +119,7 @@ Nx = 10
 Ny = 10
 N = Nx * Ny
 
-densities = np.array([0.68, 0.69, 0.70, 0.71, 0.72])
+densities = np.array([0.68, 0.69, 0.70, 0.71, 0.72, 0.73, 0.74])
 L_values = np.sqrt((N*np.pi*(2*r)**2)/(4*(densities)))
 
 def find_overlaps(x, y, r, L):
@@ -197,6 +197,7 @@ def averaged_g_r(x, y, r, d, L, rMax, dr, num_sims, sample):
     
     return r_array, g_r_avg
 
+
 accepted_moves = 0
 colors = ['red', 'blue', 'green', 'orange', 'purple']
 
@@ -226,9 +227,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
 
     overlaps = find_overlaps(x, y, r, L)
     print("there are", len(overlaps), "overlaps")
-    
-    # Calculate marker size - using the simple function
-    print(f"Box size L={L:.3f}")
+
     
     for step in range(200001):
         if step % 10000 == 0:
@@ -236,17 +235,10 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             ax = plt.gca()
             
             # Plot with calculated marker size
-            plot_circles = True 
-            for xi, yi in zip(x, y):
-                circle = plt.Circle((xi, yi), r, color='blue', fill=True, 
-                                       linestyle='-', linewidth=1, zorder=1)
-                circle2 = plt.Circle((xi,yi), r, color = 'black', fill=False, linestyle = '-', linewidth = 1, zorder = 1)
-                ax.add_patch(circle)
-                ax.add_patch(circle2)
-            
-            # Also plot actual circles for verification (optional)
-            
-            
+            # print([x[0],y[0]])
+            for j in range(len(x)):
+                draw_circle = plt.Circle((x[j],y[j]),r,color = 'blue', ec = 'black', fill = True, alpha = 0.8, zorder = 10, linewidth = 2.0)
+                ax.add_patch(draw_circle)
             plt.xlabel('x', fontsize = 20)
             plt.ylabel('y', fontsize = 20)
             plt.xticks(fontsize = 20)
@@ -254,9 +246,9 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
             plt.xlim(0, L)
             plt.ylim(0, L)
             ax.set_aspect('equal', adjustable='box')
-            ax.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+            ax.grid(False, alpha=0.3, linestyle='--', linewidth=0.5)
             plt.title(f"η = {densities[density_idx]:.2f}, L = {L:.3f}, Step {step}\nParticle radius r = {r}", fontsize = 20)
-            
+            print(f"{frames_dir}/eq_{eq_frame_index:04d}.png")
             plt.savefig(f"{frames_dir}/eq_{eq_frame_index:04d}.png", dpi=150, bbox_inches='tight')
             plt.close()
             eq_frame_index += 1

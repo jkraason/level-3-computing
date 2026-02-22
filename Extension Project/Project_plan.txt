@@ -17,3 +17,8 @@ sigma = particle diameter
 
 calculate g(r) 
 phi_6 and Q6 to determine the order in 2D and 3D respectively - needs more research
+
+Notes (25/01/2026):
+- high density doesn't equilibrate with mc moves - need to try event chain model 
+- low densities still work with MC moves. however, pcf cannot extend as far out as 5xdiameter - must go to L/2
+- still need to try lennard jones and 
