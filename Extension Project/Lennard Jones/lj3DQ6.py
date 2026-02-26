@@ -225,48 +225,95 @@ sample_interval = 10000
 # ================================
 # MAIN LOOP
 # ================================
+# MAIN LOOP WITH FILE SAVING
+# ================================
+plt.figure(figsize=(10,6))
+
 for density_idx, L in enumerate(L_values):
 
-    print(f"\n=== Density η = {densities[density_idx]:.2f} ===")
+    density = densities[density_idx]
+    q6_file = f"Q6_LJ_eta_{density:.2f}.npz"
 
-    step_points = np.arange(0, n_steps, sample_interval)
-    Q6_runs = np.zeros((n_runs, len(step_points)))
+    print(f"\n=== Density η = {density:.2f} ===")
 
-    for run in range(n_runs):
+    if os.path.exists(q6_file):
 
-        x, y, z, spacing = fcc_lattice(N, r, L)
-        rcut = 1.3 * spacing
+        print("Found existing data. Loading instead of recomputing.")
+        data = np.load(q6_file)
 
-        sample_index = 0
+        step_points = data["step_points"]
+        Q6_mean = data["Q6_mean"]
+        Q6_sem = data["Q6_sem"]
 
-        for step in range(n_steps):
+    else:
 
-            x, y, z, _ = mc_move_lj(x, y, z, d, L, 2*r, rcut, beta)
+        step_points = np.arange(0, n_steps, sample_interval)
+        Q6_runs = np.zeros((n_runs, len(step_points)))
 
-            if step % sample_interval == 0:
-                neighbors = find_neighbors(x, y, z, L, rcut)
-                Q6_runs[run, sample_index] = compute_Q6(x, y, z, neighbors, L)
-                sample_index += 1
+        for run in range(n_runs):
 
-    # Mean and SEM at EACH step
-    Q6_mean = np.mean(Q6_runs, axis=0)
-    Q6_sem  = np.std(Q6_runs, axis=0, ddof=1) / np.sqrt(n_runs)
+            x, y, z, spacing = fcc_lattice(N, r, L)
+            rcut = 1.3 * spacing
+            sample_index = 0
 
+            for step in range(n_steps):
+
+                x, y, z, _ = mc_move_lj(x, y, z, d, L, 2*r, rcut, beta)
+
+                if step % sample_interval == 0:
+                    neighbors = find_neighbors(x, y, z, L, rcut)
+                    Q6_runs[run, sample_index] = compute_Q6(x, y, z, neighbors, L)
+                    sample_index += 1
+
+        # Mean and SEM
+        Q6_mean = np.mean(Q6_runs, axis=0)
+        Q6_sem  = np.std(Q6_runs, axis=0, ddof=1) / np.sqrt(n_runs)
+
+        # =========================
+        # SAVE RESULTS
+        # =========================
+        np.savez_compressed(
+            q6_file,
+            step_points=step_points,
+            Q6_mean=Q6_mean,
+            Q6_sem=Q6_sem,
+            density=density,
+            N=N,
+            n_runs=n_runs,
+            n_steps=n_steps,
+            sample_interval=sample_interval
+        )
+
+        print(f"Saved Q6 data to {q6_file}")
+
+    # =========================
+    # PLOT (always runs)
+    # =========================
     plt.errorbar(step_points,
                  Q6_mean,
                  yerr=Q6_sem,
                  fmt='o-',
                  capsize=3,
-                 label=f'η={densities[density_idx]:.2f}')
+                 label=f'η={density:.2f}',
+                ls=' ', marker = '.')
 
-
-plt.axhline(0.574, ls='--', c='k', label='FCC')
+plt.axhline(0.574, ls='--', c='k', label='FCC Lattice')
 plt.axhline(0.30, ls='--', c='gray', label='Liquid')
-plt.xlabel("MC steps", fontsize = 18)
-plt.ylabel("Global $Q_6$", fontsize = 18)
-plt.tick_params(axis='both', labelsize = 14)
-plt.title("Bond-orientational order vs MC steps")
-plt.legend(ncols = 2,fontsize = 18)
-plt.savefig('Q6LJ.png')
+
+plt.xlabel("MC steps", fontsize=18)
+plt.ylabel("Global $Q_6$", fontsize=18)
+plt.tick_params(axis='both', labelsize=14)
+#plt.title("Bond-orientational order vs MC steps")
+
+plt.legend(
+    ncols=1,
+    fontsize=16,
+    loc='center left',
+    bbox_to_anchor=(1.02, 0.5)
+)
+
 plt.tight_layout()
+plt.subplots_adjust(right=0.75)
+
+plt.savefig('Q6LJ.png', dpi=300)
 plt.show()

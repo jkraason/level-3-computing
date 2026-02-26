@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import os
 
 # ================================
 # Hexagonal lattice
@@ -111,12 +112,10 @@ n_steps = 200000
 n_snapshots = 100            # independent configs per sample
 colors = ['red','blue','green','orange','purple','brown','black']
 
-plt.figure(figsize=(8,5))
-
 # ================================
 # Loop over densities
 # ================================
-plt.figure(figsize=(8,5))
+plt.figure(figsize=(14,8))
 
 n_runs = 3   # independent simulations
 
@@ -124,85 +123,110 @@ n_runs = 3   # independent simulations
 # Loop over densities
 # ================================
 for idx, density in enumerate(densities):
+    psi_file = f"HS2Dpsi6_eta_{density:.2f}.npz"
 
-    L = np.sqrt((N*np.pi*(2*r)**2)/(4*density))
+    if os.path.exists(psi_file):
+        print(f"Found existing data for η={density:.2f}. Loading instead of recomputing.")
+        data = np.load(psi_file)
 
-    step_points = np.arange(0, n_steps + 1, sample_interval)
-    psi6_runs = np.zeros((n_runs, len(step_points)))
+        step_points = data["step_points"]
+        psi6_mean = data["psi6_mean"]
+        psi6_sem  = data["psi6_sem"]
 
-    print(f"\n==== Density η={density:.2f} ====")
+    else: 
+        L = np.sqrt((N*np.pi*(2*r)**2)/(4*density))
 
-    # ====================================
-    # Independent runs
-    # ====================================
-    for run in range(n_runs):
+        step_points = np.arange(0, n_steps + 1, sample_interval)
+        psi6_runs = np.zeros((n_runs, len(step_points)))
 
-        x, y, spacing = create_hexagonal_lattice(N, r, L)
-        rcut_psi6 = 1.5 * spacing
-
-        d_run = d  # independent step size per run
-
-        accepted_moves = 0
-        attempted_moves = 0
-
-        sample_index = 0
-
-        # --- Initial Psi6 ---
-        psi6_runs[run, sample_index] = compute_psi6_2D(x, y, L, rcut_psi6)
-        sample_index += 1
+        print(f"\n==== Density η={density:.2f} ====")
 
         # ====================================
-        # MC simulation
+        # Independent runs
         # ====================================
-        for step in range(1, n_steps + 1):
+        for run in range(n_runs):
 
-            x, y, accepted = mc_move(x, y, r, d_run, L)
+            x, y, spacing = create_hexagonal_lattice(N, r, L)
+            rcut_psi6 = 1.5 * spacing
 
-            attempted_moves += 1
-            if accepted:
-                accepted_moves += 1
+            d_run = d  # independent step size per run
 
-            # --------------------------------
-            # Acceptance tuning
-            # --------------------------------
-            if step % 10000 == 0:
+            accepted_moves = 0
+            attempted_moves = 0
 
-                acc_ratio = accepted_moves / attempted_moves
+            sample_index = 0
 
-                if acc_ratio > 0.5:
-                    d_run *= 1.05
-                elif acc_ratio < 0.25:
-                    d_run *= 0.95
+            # --- Initial Psi6 ---
+            psi6_runs[run, sample_index] = compute_psi6_2D(x, y, L, rcut_psi6)
+            sample_index += 1
 
-                accepted_moves = 0
-                attempted_moves = 0
+            # ====================================
+            # MC simulation
+            # ====================================
+            for step in range(1, n_steps + 1):
 
-            # --------------------------------
-            # Sampling
-            # --------------------------------
-            if step % sample_interval == 0:
+                x, y, accepted = mc_move(x, y, r, d_run, L)
 
-                psi6_runs[run, sample_index] = compute_psi6_2D(
-                    x, y, L, rcut_psi6
-                )
-                sample_index += 1
+                attempted_moves += 1
+                if accepted:
+                    accepted_moves += 1
 
-    # ====================================
-    # Average across runs
-    # ====================================
-    psi6_mean = np.mean(psi6_runs, axis=0)
-    psi6_sem  = np.std(psi6_runs, axis=0, ddof=1) / np.sqrt(n_runs)
+                # --------------------------------
+                # Acceptance tuning
+                # --------------------------------
+                if step % 10000 == 0:
 
-    for s, m, e in zip(step_points, psi6_mean, psi6_sem):
-        print(f"η={density:.2f} | step={s} | Psi6={m:.3f} ± {e:.3f}")
+                    acc_ratio = accepted_moves / attempted_moves
 
+                    if acc_ratio > 0.5:
+                        d_run *= 1.05
+                    elif acc_ratio < 0.25:
+                        d_run *= 0.95
+
+                    accepted_moves = 0
+                    attempted_moves = 0
+
+                # --------------------------------
+                # Sampling
+                # --------------------------------
+                if step % sample_interval == 0:
+
+                    psi6_runs[run, sample_index] = compute_psi6_2D(
+                        x, y, L, rcut_psi6
+                    )
+                    sample_index += 1
+
+        # ====================================
+        # Average across runs
+        # ====================================
+        psi6_mean = np.mean(psi6_runs, axis=0)
+        psi6_sem  = np.std(psi6_runs, axis=0, ddof=1) / np.sqrt(n_runs)
+
+        for s, m, e in zip(step_points, psi6_mean, psi6_sem):
+            print(f"η={density:.2f} | step={s} | Psi6={m:.3f} ± {e:.3f}")
+        psi_file = f"HS2Dpsi6_eta_{density:.2f}.npz"
+        np.savez_compressed(
+            psi_file,
+            step_points=step_points,
+            psi6_mean=psi6_mean,
+            psi6_sem=psi6_sem,
+            density=density,
+            N=N,
+            L=L,
+            r=r,
+            n_runs=n_runs,
+            n_steps=n_steps,
+            sample_interval=sample_interval
+        )
+
+        print(f"Saved ψ6 data to {psi_file}")
     plt.errorbar(step_points,
-                 psi6_mean,
-                 yerr=psi6_sem,
-                 fmt='o-',
-                 capsize=3,
-                 color=colors[idx],
-                 label=fr'$\eta={density:.2f}$')
+                    psi6_mean,
+                    yerr=psi6_sem,
+                    fmt='o-',
+                    capsize=3,
+                    color=colors[idx],
+                    label=fr'$\eta={density:.2f}$')
 
 # Get current x-limits (after plotting your data)
 xmin, xmax = plt.xlim()
@@ -220,11 +244,21 @@ plt.fill_between(
 # Keep reference lines if you want
 plt.axhline(1, color='black', linestyle='--', label='Hexagonal lattice')
 plt.axhline(0.2, color='blue', linestyle='--', label='Liquid phase')
-plt.xlabel("MC steps", fontsize = 18)
-plt.ylabel(r"$\Psi_6$", fontsize = 18)
+
+plt.xlabel("MC steps", fontsize=18)
+plt.ylabel(r"$\psi_6$", fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
-plt.title("2D Hard-Sphere Bond-Orientational Order")
-plt.legend(ncols = 2, fontsize=18)
+#plt.title("Bond-orientational order vs MC steps")
+
+plt.legend(
+    ncols=1,
+    fontsize=16,
+    loc='center left',
+    bbox_to_anchor=(1.02, 0.5)
+)
+
 plt.tight_layout()
-plt.savefig("HS2Dpsi6.png")
+plt.subplots_adjust(right=0.75)
+
+plt.savefig('HS2Dpsi6.png', dpi=300)
 plt.show()

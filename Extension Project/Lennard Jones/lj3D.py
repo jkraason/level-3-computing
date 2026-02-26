@@ -298,93 +298,119 @@ plt.figure(figsize=(8,6))
 k=0
 
 for density_idx, (L, color) in enumerate(zip(L_values, colors)):
-    
-    accepted_moves = 0
-    eq_frame_index = 0
-    
-    # Create separate folder for this density
-    frames_dir = f"LJframes_equil_eta_{densities[density_idx]:.2f}"
-    os.makedirs(frames_dir, exist_ok=True)
-    
-    #lattice - initialise for each L
-    print(f"\n=== Running simulation for L = {L} ===")
-    r = 0.03
-    
-    # Create fcc lattice
-    x, y, z, spacing = fcc_lattice(N, r, L)
-    neighbors = build_neighbor_list(x, y, z, L, r_list)
-    rebuild_every = 1000
+    gr_file = f"gr_LJ3D_eta_{densities[density_idx]:.2f}.npz"
 
-    for step in range(200000):
-        if step % rebuild_every == 0:
-            neighbors = build_neighbor_list(x, y, z, L, r_list)
+    if os.path.exists(gr_file):
+        print(f"Found existing data for η={densities[density_idx]:.2f}. Loading instead of recomputing.")
+        data = np.load(gr_file)
+        r_vals = data["r_vals"]
+        g_mean = data["g_mean"]
+        g_err = data["g_err"]
+    else:
+        accepted_moves = 0
+        eq_frame_index = 0
+        
+        # Create separate folder for this density
+        frames_dir = f"LJframes_equil_eta_{densities[density_idx]:.2f}"
+        os.makedirs(frames_dir, exist_ok=True)
+        
+        #lattice - initialise for each L
+        print(f"\n=== Running simulation for L = {L} ===")
+        r = 0.03
+        
+        # Create fcc lattice
+        x, y, z, spacing = fcc_lattice(N, r, L)
+        neighbors = build_neighbor_list(x, y, z, L, r_list)
+        rebuild_every = 1000
 
-        x, y, z, accepted = mc_move_lj(
-            x, y, z, d, L, sigma, rcut, beta, neighbors
+        for step in range(1000000):
+            if step % rebuild_every == 0:
+                neighbors = build_neighbor_list(x, y, z, L, r_list)
+
+            x, y, z, accepted = mc_move_lj(
+                x, y, z, d, L, sigma, rcut, beta, neighbors
+            )
+
+            if step % 10000 == 0:
+                angle = (400000 // save_every) * 10  # rotate 10° per frame
+                save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
+                eq_frame_index += 1
+            x, y, z, accepted = mc_move_lj(x, y, z, d, L, 2*r, rcut, beta, neighbors)
+            if accepted:
+                accepted_moves += 1
+            if step%10000 == 0 and step!=0:
+                #print(step)
+                #print(accepted_moves)
+                acceptance_ratio = accepted_moves/step
+                print("Acceptance ratio (no modification): ", acceptance_ratio)
+
+        print("Acceptance ratio after 200,000 moves:", acceptance_ratio)
+        while acceptance_ratio>0.5 or acceptance_ratio<0.25:
+            if acceptance_ratio>0.5:
+                accepted_moves=0
+                d = d*1.05 
+                print("d=", d)
+                for j in range(0,10000):
+                    x,y,z,accepted = mc_move_lj(x, y, z, d, L, sigma, rcut, beta, neighbors)
+
+                    if accepted:
+                        accepted_moves+=1
+                acceptance_ratio = accepted_moves/10000
+                print("Acceptance ratio (large):", acceptance_ratio)
+            if acceptance_ratio<0.25:
+                accepted_moves = 0
+                d = d*0.95
+                print("d =",d)
+                for j in range(0,10000):
+                    x,y,z,accepted = mc_move_lj(x,y,z,d,L, 2*r, rcut, beta, neighbors)
+                    if accepted:
+                        accepted_moves+=1
+                acceptance_ratio = accepted_moves/10000
+                print("Acceptance ratio (small):", acceptance_ratio)
+        print("final acceptance ratio:", acceptance_ratio)
+        
+        # Build GIF for this density
+        eq_frames = []
+        files = sorted(glob.glob(f"{frames_dir}/*.png"))
+        for f in files:
+            eq_frames.append(Image.open(f))
+        
+        if len(eq_frames) > 0:
+            eq_frames[0].save(
+                f"LJ3D_equilibration_eta_{densities[density_idx]:.2f}.gif",
+                save_all=True,
+                append_images=eq_frames[1:],
+                duration=200,
+                loop=0
+            )
+            print(f"Saved GIF: LJ3D_equilibration_eta_{densities[density_idx]:.2f}.gif")
+        
+        # Plot for this L value
+        r_vals, g_r, g_err = averaged_g_r(x, y, z, r, d, L, rMax=L/2, dr=dr, num_sims=500_000, sample=1000, equil_steps=50_000, block_size=5)
+        # =====================================
+        # SAVE AVERAGED g(r) FOR THIS DENSITY
+        # =====================================
+
+        gr_file = f"gr_LJ3D_eta_{density_idx:.2f}.npz"
+
+        np.savez_compressed(
+            gr_file,
+            r_vals=r_vals,
+            g_mean=g_mean,
+            g_err=g_err,
+            density=densities[density_idx],
+            N=N,
+            L=L,
+            sigma=sigma,
+            dr=dr,
+            rMax=L/2
         )
 
-        if step % 10000 == 0:
-            angle = (400000 // save_every) * 10  # rotate 10° per frame
-            save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
-            eq_frame_index += 1
-        x, y, z, accepted = mc_move_lj(x, y, z, d, L, 2*r, rcut, beta, neighbors)
-        if accepted:
-            accepted_moves += 1
-        if step%10000 == 0 and step!=0:
-            #print(step)
-            #print(accepted_moves)
-            acceptance_ratio = accepted_moves/step
-            print("Acceptance ratio (no modification): ", acceptance_ratio)
+        print(f"Saved averaged g(r) to {gr_file}")
 
-    print("Acceptance ratio after 200,000 moves:", acceptance_ratio)
-    while acceptance_ratio>0.5 or acceptance_ratio<0.25:
-        if acceptance_ratio>0.5:
-            accepted_moves=0
-            d = d*1.05 
-            print("d=", d)
-            for j in range(0,10000):
-                x,y,z,accepted = mc_move_lj(x, y, z, d, L, sigma, rcut, beta, neighbors)
+    plt.errorbar(r_vals/2*r, g_r, g_err, color=color, linewidth=2, label=fr'$\eta={densities[k]:.2f}$')
+    k=k+1
 
-                if accepted:
-                    accepted_moves+=1
-            acceptance_ratio = accepted_moves/10000
-            print("Acceptance ratio (large):", acceptance_ratio)
-        if acceptance_ratio<0.25:
-            accepted_moves = 0
-            d = d*0.95
-            print("d =",d)
-            for j in range(0,10000):
-                x,y,z,accepted = mc_move_lj(x,y,z,d,L, 2*r, rcut, beta, neighbors)
-                if accepted:
-                    accepted_moves+=1
-            acceptance_ratio = accepted_moves/10000
-            print("Acceptance ratio (small):", acceptance_ratio)
-    print("final acceptance ratio:", acceptance_ratio)
-    
-    # Build GIF for this density
-    eq_frames = []
-    files = sorted(glob.glob(f"{frames_dir}/*.png"))
-    for f in files:
-        eq_frames.append(Image.open(f))
-    
-    if len(eq_frames) > 0:
-        eq_frames[0].save(
-            f"LJ3D_equilibration_eta_{densities[density_idx]:.2f}.gif",
-            save_all=True,
-            append_images=eq_frames[1:],
-            duration=200,
-            loop=0
-        )
-        print(f"Saved GIF: LJ3D_equilibration_eta_{densities[density_idx]:.2f}.gif")
-    
-    # Plot for this L value
-    r_vals, g_r, g_err = averaged_g_r(x, y, z, r, d, L, rMax=L/2, dr=dr, num_sims=500_000, sample=1000, equil_steps=50_000, block_size=5)
-
-    # Plot g(r) with error bands
-    xplot = r_vals / (2*r)
-    plt.errorbar(xplot, g_r, g_err, color=color, linewidth=2, label=fr'$\eta={densities[k]:.2f}$')
-    #plt.fill_between(xplot, g_r - g_err, g_r + g_err, color=color, alpha=0.3)
-    k += 1
 
 plt.axhline(1.0, color='k', linestyle='--', alpha=0.5, label = 'Ideal gas')
 plt.xlabel(r"$r/\sigma$", fontsize = 18)

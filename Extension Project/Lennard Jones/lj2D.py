@@ -196,67 +196,94 @@ plt.figure(figsize=(10, 8))
 rMax = 10*r
 k=0
 for idx, density in enumerate(densities):
+    gr_file = f"gr_LJ2D_eta_{density:.2f}.npz"
 
-    L = np.sqrt((N * np.pi * sigma**2) / (4 * density))
-    x, y = create_hexagonal_lattice(N, r, L)
+    if os.path.exists(gr_file):
+        print(f"Found existing data for η={density:.2f}. Loading instead of recomputing.")
+        data = np.load(gr_file)
+        r_vals = data["r_vals"]
+        g_mean = data["g_mean"]
+        g_err = data["g_err"]
+    else:
+        
+        L = np.sqrt((N * np.pi * sigma**2) / (4 * density))
+        x, y = create_hexagonal_lattice(N, r, L)
 
-    d = initial_d
-    accepted = 0
-    attempted = 0
-    frames_dir = f"frames_LJ_eta_{density:.2f}"
-    os.makedirs(frames_dir, exist_ok=True)
-    frame_idx = 0
+        d = initial_d
+        accepted = 0
+        attempted = 0
+        frames_dir = f"frames_LJ_eta_{density:.2f}"
+        os.makedirs(frames_dir, exist_ok=True)
+        frame_idx = 0
 
-    # ============================
-    # EQUILIBRATION
-    # ============================
+        # ============================
+        # EQUILIBRATION
+        # ============================
 
-    for step in range(0, 200_001):
-        x,y,acc = mc_move_lj(x, y, d, L, sigma, rcut, beta)
-        attempted += 1
-        if acc:
-            accepted += 1
+        for step in range(0, 200_001):
+            x,y,acc = mc_move_lj(x, y, d, L, sigma, rcut, beta)
+            attempted += 1
+            if acc:
+                accepted += 1
 
-        if step % 10_000 == 0 and step !=0:
-            acc_ratio = accepted / attempted
-            print(f"η={density:.2f} | step={step} | acc={acc_ratio:.3f} | d={d:.4f}")
+            if step % 10_000 == 0 and step !=0:
+                acc_ratio = accepted / attempted
+                print(f"η={density:.2f} | step={step} | acc={acc_ratio:.3f} | d={d:.4f}")
 
-            if acc_ratio > 0.5:
-                d *= 1.05
-            elif acc_ratio < 0.25:
-                d *= 0.95
+                if acc_ratio > 0.5:
+                    d *= 1.05
+                elif acc_ratio < 0.25:
+                    d *= 0.95
 
-            accepted = 0
-            attempted = 0
-        if step % 10000 == 0:
-            fig, ax = plt.subplots(figsize=(6,6))
-            for j in range(N):
-                ax.add_patch(plt.Circle((x[j],y[j]), r, color='red', ec='black', alpha=0.8))
-            ax.set_xlim(0,L)
-            ax.set_ylim(0,L)
-            ax.set_aspect('equal')
-            ax.set_title(f'η={density:.2f}, step={step}', fontsize=18)
-            ax.tick_params(axis='both', labelsize=16)
-            plt.tight_layout()
-            plt.savefig(f"{frames_dir}/frame_{frame_idx:04d}.png", dpi=150)
-            plt.close(fig)
-            frame_idx += 1
-    frame_files = sorted([f for f in os.listdir(frames_dir) if f.endswith(".png")])
-    images = [Image.open(os.path.join(frames_dir,f)) for f in frame_files]
-    if images:
-        gif_path = f"equilibration_LJ_eta_{density:.2f}.gif"
-        images[0].save(gif_path, save_all=True, append_images=images[1:], duration=200, loop=0)
-        print(f"Saved GIF: {gif_path}")
-    # ============================
-    # RDF AVERAGING
-    # ============================
-    r_vals, g_mean, g_err = averaged_g_r(x,y,r,d,L,rMax,dr,500_000, 1000,equil_steps = 0, block_size=5)
+                accepted = 0
+                attempted = 0
+            if step % 10000 == 0:
+                fig, ax = plt.subplots(figsize=(6,6))
+                for j in range(N):
+                    ax.add_patch(plt.Circle((x[j],y[j]), r, color='red', ec='black', alpha=0.8))
+                ax.set_xlim(0,L)
+                ax.set_ylim(0,L)
+                ax.set_aspect('equal')
+                ax.set_title(f'η={density:.2f}, step={step}', fontsize=18)
+                ax.tick_params(axis='both', labelsize=16)
+                plt.tight_layout()
+                plt.savefig(f"{frames_dir}/frame_{frame_idx:04d}.png", dpi=150)
+                plt.close(fig)
+                frame_idx += 1
+        frame_files = sorted([f for f in os.listdir(frames_dir) if f.endswith(".png")])
+        images = [Image.open(os.path.join(frames_dir,f)) for f in frame_files]
+        if images:
+            gif_path = f"equilibration_LJ_eta_{density:.2f}.gif"
+            images[0].save(gif_path, save_all=True, append_images=images[1:], duration=200, loop=0)
+            print(f"Saved GIF: {gif_path}")
+        # ============================
+        # RDF AVERAGING
+        # ============================
+        r_vals, g_mean, g_err = averaged_g_r(x,y,r,d,L,rMax,dr,500_000, 1000,equil_steps = 0, block_size=5)
+        # =====================================
+        # SAVE AVERAGED g(r) FOR THIS DENSITY
+        # =====================================
 
-    # Plot g(r) with error bands
-    xplot = r_vals / (2*r)
+        gr_file = f"gr_LJ2D_eta_{density:.2f}.npz"
+
+        np.savez_compressed(
+            gr_file,
+            r_vals=r_vals,
+            g_mean=g_mean,
+            g_err=g_err,
+            density=density,
+            N=N,
+            L=L,
+            sigma=sigma,
+            dr=dr,
+            rMax=rMax
+        )
+
+        print(f"Saved averaged g(r) to {gr_file}")
+        # Plot g(r) with error bands
+        xplot = r_vals / (2*r)
     plt.errorbar(r_vals/(2*r), g_mean, yerr = g_err, linewidth=2, color=colors[idx], label=f'η={density:.2f}')
-    plt.fill_between(xplot, g_mean - g_err, g_mean + g_err, color=colors[k], alpha=0.3)
-    k=k+1
+
 
 # ============================================================
 #  FINAL PLOT
@@ -268,5 +295,5 @@ plt.ylabel(r"$g(r)$", fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
 plt.legend(ncols = 2, fontsize=18)
 plt.tight_layout()
-plt.savefig("lj_gr.png", dpi=300)
+plt.savefig("lj2D_gr.png", dpi=300)
 plt.show()

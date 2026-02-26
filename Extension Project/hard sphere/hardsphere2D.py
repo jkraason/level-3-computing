@@ -136,66 +136,95 @@ plt.figure(figsize=(10,8))
 # Main loop over densities
 # ==================================================
 for idx, (density, L) in enumerate(zip(densities, L_values)):
+    gr_file = f"gr_HS2D_eta_{density:.2f}.npz"
 
-    print(f"\n=== Density {density:.2f} ===")
+    if os.path.exists(gr_file):
+        print(f"Found existing data for η={density:.2f}. Loading instead of recomputing.")
+        data = np.load(gr_file)
+        r_vals = data["r_vals"]
+        g_mean = data["g_mean"]
+        g_err = data["g_err"]
+    else:
+        print(f"\n=== Density {density:.2f} ===")
 
-    x, y, spacing = create_hexagonal_lattice(N, r, L)
-    d = d_initial
+        x, y, spacing = create_hexagonal_lattice(N, r, L)
+        d = d_initial
 
-    frames_dir = f"frames_eta_{density:.2f}"
-    os.makedirs(frames_dir, exist_ok=True)
-    frame_index = 0
+        frames_dir = f"frames_eta_{density:.2f}"
+        os.makedirs(frames_dir, exist_ok=True)
+        frame_index = 0
 
-    # MC simulation + frame saving + tuning
-    tune_steps = 50000
-    tune_interval = 10000
-    accepted_moves = 0
-    attempted_moves = 0
+        # MC simulation + frame saving + tuning
+        tune_steps = 50000
+        tune_interval = 10000
+        accepted_moves = 0
+        attempted_moves = 0
 
-    for step in range(200000):
-        x, y, accepted = mc_move(x, y, r, d, L)
-        attempted_moves += 1
-        if accepted:
-            accepted_moves += 1
+        for step in range(200000):
+            x, y, accepted = mc_move(x, y, r, d, L)
+            attempted_moves += 1
+            if accepted:
+                accepted_moves += 1
 
-        # Save frames every 10k steps
-        if step % 10000 == 0:
-            fig, ax = plt.subplots(figsize=(6,6))
-            for j in range(N):
-                ax.add_patch(plt.Circle((x[j],y[j]), r, color='blue', ec='black', alpha=0.8))
-            ax.set_xlim(0,L)
-            ax.set_ylim(0,L)
-            ax.set_aspect('equal')
-            ax.set_title(f'η={density:.2f}, step={step}', fontsize=18)
-            ax.tick_params(axis='both', labelsize=16)
-            plt.tight_layout()
-            plt.savefig(f"{frames_dir}/frame_{frame_index:04d}.png", dpi=150)
-            plt.close(fig)
-            frame_index += 1
+            # Save frames every 10k steps
+            if step % 10000 == 0:
+                fig, ax = plt.subplots(figsize=(6,6))
+                for j in range(N):
+                    ax.add_patch(plt.Circle((x[j],y[j]), r, color='blue', ec='black', alpha=0.8))
+                ax.set_xlim(0,L)
+                ax.set_ylim(0,L)
+                ax.set_aspect('equal')
+                ax.set_title(f'η={density:.2f}, step={step}', fontsize=18)
+                ax.tick_params(axis='both', labelsize=16)
+                plt.tight_layout()
+                plt.savefig(f"{frames_dir}/frame_{frame_index:04d}.png", dpi=150)
+                plt.close(fig)
+                frame_index += 1
 
-        # Tune displacement
-        if step>0 and step%tune_interval==0 and step<=tune_steps:
-            acc_ratio = accepted_moves/attempted_moves
-            if acc_ratio>0.5:
-                d *= 1.05
-            elif acc_ratio<0.25:
-                d *= 0.95
-            accepted_moves = 0
-            attempted_moves = 0
+            # Tune displacement
+            if step>0 and step%tune_interval==0 and step<=tune_steps:
+                acc_ratio = accepted_moves/attempted_moves
+                if acc_ratio>0.5:
+                    d *= 1.05
+                elif acc_ratio<0.25:
+                    d *= 0.95
+                accepted_moves = 0
+                attempted_moves = 0
 
-    print(f"Final displacement d={d:.5f}")
+        print(f"Final displacement d={d:.5f}")
 
-    # Build GIF for this density
-    frame_files = sorted([f for f in os.listdir(frames_dir) if f.endswith(".png")])
-    images = [Image.open(os.path.join(frames_dir,f)) for f in frame_files]
-    if images:
-        gif_path = f"equilibration_eta_{density:.2f}.gif"
-        images[0].save(gif_path, save_all=True, append_images=images[1:], duration=200, loop=0)
-        print(f"Saved GIF: {gif_path}")
+        # Build GIF for this density
+        frame_files = sorted([f for f in os.listdir(frames_dir) if f.endswith(".png")])
+        images = [Image.open(os.path.join(frames_dir,f)) for f in frame_files]
+        if images:
+            gif_path = f"equilibration_eta_{density:.2f}.gif"
+            images[0].save(gif_path, save_all=True, append_images=images[1:], duration=200, loop=0)
+            print(f"Saved GIF: {gif_path}")
 
-    # RDF production run
-    r_vals, g_r, g_err = averaged_g_r(x, y, r, d, L, rMax=10*r, dr=dr, num_sims = 500000, sample = 1000, equil_steps = 0, block_size = 5)
-    plt.errorbar(r_vals/(2*r), g_r, yerr = g_err, linewidth=2, color=colors[idx], label=f'η={density:.2f}')
+        # RDF production run
+        
+        r_vals, g_r, g_err = averaged_g_r(x, y, r, d, L, rMax=10*r, dr=dr, num_sims = 500000, sample = 1000, equil_steps = 0, block_size = 5)
+                # =====================================
+        # SAVE AVERAGED g(r) FOR THIS DENSITY
+        # =====================================
+
+        gr_file = f"gr_HS2D_eta_{density:.2f}.npz"
+
+        np.savez_compressed(
+            gr_file,
+            r_vals=r_vals,
+            g_mean=g_r,
+            g_err=g_err,
+            density=density,
+            N=N,
+            L=L,
+            sigma=2*r,
+            dr=dr,
+            rMax=10*r
+        )
+
+        print(f"Saved averaged g(r) to {gr_file}")
+    plt.errorbar(r_vals/(2*r), g_mean, yerr = g_err, linewidth=2, color=colors[idx], label=f'η={density:.2f}')
 
 # ==================================================
 # Final RDF plot
@@ -207,7 +236,7 @@ plt.ylabel('g(r)', fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
 plt.legend(ncols = 2,fontsize=18)
 plt.tight_layout()
-plt.savefig("multiple_L_g_r.png", dpi=300)
+plt.savefig("HS2Dgr.png", dpi=300)
 plt.show()
 
 

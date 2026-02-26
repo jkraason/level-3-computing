@@ -299,95 +299,118 @@ colors = ['red', 'blue', 'green', 'orange', 'purple']
 plt.figure(figsize=(8,6))
 k=0
 for density_idx, (L, color) in enumerate(zip(L_values, colors)):
-    
-    accepted_moves = 0
-    eq_frame_index = 0
-    
-    # Create separate folder for this density
-    frames_dir = f"frames_equil_eta_{densities[density_idx]:.2f}"
-    os.makedirs(frames_dir, exist_ok=True)
-    
-    #lattice - initialise for each L
-    print(f"\n=== Running simulation for L = {L} ===")
-    r = 0.03
-    
-    # Create hexagonal lattice
-    x, y, z, spacing = fcc_lattice(N, r, L)
-    
-    # Verify no overlaps and all particles in box
-    overlaps = find_overlaps(x, y, z, r, L)
-    print(f"L={L:.3f}: {len(overlaps)} overlaps, spacing={spacing:.4f}")
-    print(f"All particles in box: {np.all((x >= 0) & (x < L) & (y >= 0) & (y < L))}")
-    for step in range(200000):
-        if step % 10000 == 0:
-            angle = (400000 // save_every) * 10  # rotate 10° per frame
-            save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
-            eq_frame_index += 1
-        x, y, z, accepted = mc_move(x, y, z, r, d, L)
-        if accepted:
-            accepted_moves += 1
-        if step%10000 == 0 and step!=0:
-            #print(step)
-            #print(accepted_moves)
-            acceptance_ratio = accepted_moves/step
-            print("Acceptance ratio (no modification): ", acceptance_ratio)
+    gr_file = f"gr_HS3D_eta_{densities[density_idx]:.2f}.npz"
 
-    print("Acceptance ratio after 200,000 moves:", acceptance_ratio)
-    while acceptance_ratio>0.5 or acceptance_ratio<0.25:
-        if acceptance_ratio>0.5:
-            accepted_moves=0
-            d = d*1.05 
-            print("d=", d)
-            for j in range(0,10000):
-                x,y,z,accepted = mc_move(x,y,z,r,d,L)
-                if accepted:
-                    accepted_moves+=1
-            acceptance_ratio = accepted_moves/10000
-            print("Acceptance ratio (large):", acceptance_ratio)
-        if acceptance_ratio<0.25:
-            accepted_moves = 0
-            d = d*0.95
-            print("d =",d)
-            for j in range(0,10000):
-                x,y,z,accepted = mc_move(x,y,z,r,d,L)
-                if accepted:
-                    accepted_moves+=1
-            acceptance_ratio = accepted_moves/10000
-            print("Acceptance ratio (small):", acceptance_ratio)
-    print("final acceptance ratio:", acceptance_ratio)
-    
-    # Build GIF for this density
-    eq_frames = []
-    files = sorted(glob.glob(f"{frames_dir}/*.png"))
-    for f in files:
-        eq_frames.append(Image.open(f))
-    
-    if len(eq_frames) > 0:
-        eq_frames[0].save(
-            f"3D_equilibration_eta_{densities[density_idx]:.2f}.gif",
-            save_all=True,
-            append_images=eq_frames[1:],
-            duration=200,
-            loop=0
-        )
-        print(f"Saved GIF: 3D_equilibration_eta_{densities[density_idx]:.2f}.gif")
-    
-    # Plot for this L value
-    r_vals, g_r, g_err = averaged_g_r(x, y, z, r, d, L, rMax=L/2, dr=dr, num_sims=500_000, sample=1000, equil_steps=50_000, block_size=5)
+    if os.path.exists(gr_file):
+        print(f"Found existing data for η={densities[density_idx]:.2f}. Loading instead of recomputing.")
+        data = np.load(gr_file)
+        r_vals = data["r_vals"]
+        g_mean = data["g_mean"]
+        g_err = data["g_err"]
+    else:
+        accepted_moves = 0
+        eq_frame_index = 0
+        
+        # Create separate folder for this density
+        frames_dir = f"frames_equil_eta_{densities[density_idx]:.2f}"
+        os.makedirs(frames_dir, exist_ok=True)
+        
+        #lattice - initialise for each L
+        print(f"\n=== Running simulation for L = {L} ===")
+        r = 0.03
+        
+        # Create hexagonal lattice
+        x, y, z, spacing = fcc_lattice(N, r, L)
+        
+        # Verify no overlaps and all particles in box
+        overlaps = find_overlaps(x, y, z, r, L)
+        print(f"L={L:.3f}: {len(overlaps)} overlaps, spacing={spacing:.4f}")
+        print(f"All particles in box: {np.all((x >= 0) & (x < L) & (y >= 0) & (y < L))}")
+        for step in range(1000000):
+            if step % 10000 == 0:
+                angle = (400000 // save_every) * 10  # rotate 10° per frame
+                save_3d_frame_with_box(x, y, z, L, step, frames_dir, eq_frame_index, angle)
+                eq_frame_index += 1
+            x, y, z, accepted = mc_move(x, y, z, r, d, L)
+            if accepted:
+                accepted_moves += 1
+            if step%10000 == 0 and step!=0:
+                #print(step)
+                #print(accepted_moves)
+                acceptance_ratio = accepted_moves/step
+                print("Acceptance ratio (no modification): ", acceptance_ratio)
 
-    # Plot g(r) with error bands
-    plt.errorbar(r_vals/(2*r), g_r, yerr = g_err, color=color, linewidth=2, label=fr'$\eta={densities[k]:.2f}$')
-    #plt.fill_between(xplot, g_r - g_err, g_r + g_err, color=color, alpha=0.3)
-    k += 1
+        print("Acceptance ratio after 200,000 moves:", acceptance_ratio)
+        while acceptance_ratio>0.5 or acceptance_ratio<0.25:
+            if acceptance_ratio>0.5:
+                accepted_moves=0
+                d = d*1.05 
+                print("d=", d)
+                for j in range(0,10000):
+                    x,y,z,accepted = mc_move(x,y,z,r,d,L)
+                    if accepted:
+                        accepted_moves+=1
+                acceptance_ratio = accepted_moves/10000
+                print("Acceptance ratio (large):", acceptance_ratio)
+            if acceptance_ratio<0.25:
+                accepted_moves = 0
+                d = d*0.95
+                print("d =",d)
+                for j in range(0,10000):
+                    x,y,z,accepted = mc_move(x,y,z,r,d,L)
+                    if accepted:
+                        accepted_moves+=1
+                acceptance_ratio = accepted_moves/10000
+                print("Acceptance ratio (small):", acceptance_ratio)
+        print("final acceptance ratio:", acceptance_ratio)
+        
+        # Build GIF for this density
+        eq_frames = []
+        files = sorted(glob.glob(f"{frames_dir}/*.png"))
+        for f in files:
+            eq_frames.append(Image.open(f))
+        
+        if len(eq_frames) > 0:
+            eq_frames[0].save(
+                f"3D_equilibration_eta_{densities[density_idx]:.2f}.gif",
+                save_all=True,
+                append_images=eq_frames[1:],
+                duration=200,
+                loop=0
+            )
+            print(f"Saved GIF: 3D_equilibration_eta_{densities[density_idx]:.2f}.gif")
+        
+        # Plot for this L value
+        r_vals, g_r, g_err = averaged_g_r(x, y, z, r, d, L, rMax=L/2, dr=dr, num_sims=500_000, sample=1000, equil_steps=50_000, block_size=5)
+
+        gr_file = f"gr_HS3D_eta_{densities[density_idx]:.2f}.npz"
+
+        np.savez_compressed(
+                gr_file,
+                r_vals=r_vals,
+                g_mean=g_r,
+                g_err=g_err,
+                density=densities[density_idx],
+                N=N,
+                L=L,
+                sigma=2*r,
+                dr=dr,
+                rMax=10*r
+            )
+
+        print(f"Saved averaged g(r) to {gr_file}")
+    plt.errorbar(r_vals/(2*r), g_mean, yerr = g_err, color=color, linewidth=2, label=fr'$\eta={densities[k]:.2f}$')
+    k=k+1
+
 
 plt.axhline(1, color='black', linestyle='--', label = 'Ideal gas')
 plt.xlabel('r/σ', fontsize=18)
 plt.ylabel('g(r)', fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
 plt.legend(ncols=2,fontsize=18)
-plt.legend()
+plt.legend(fontsize = 14)
 plt.tight_layout()
-plt.savefig("3D g(r) error bands.png")
+plt.savefig("3DHSg(r).png")
 plt.show()
 
 print("optimal value of d: ", d)
