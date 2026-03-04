@@ -6,7 +6,7 @@ import os
 import glob
 #  SYSTEM PARAMETERS
 
-N=100
+N=400
 
 r = 0.03
 sigma = 2 * r
@@ -16,13 +16,13 @@ kB = 1.0
 T = 1.0
 beta = 1.0 / (kB * T)
 
-densities = np.array([0.68,0.71,0.74,0.77])
+densities = np.array([0.68,0.71,0.74,0.77])   
 colors = ['red','blue','green','orange','purple','brown','black']
 
 dr = 0.1 * r
 rcut = 10*r
 
-initial_d = 0.03
+initial_d = 0.1
 
 # ============================================================
 #  HEXAGONAL LATTICE
@@ -196,7 +196,7 @@ plt.figure(figsize=(10, 8))
 rMax = 10*r
 k=0
 for idx, density in enumerate(densities):
-    gr_file = f"gr_LJ2D_eta_{density:.2f}.npz"
+    gr_file = f"N=400gr_LJ2D_eta_{density:.2f}.npz"
 
     if os.path.exists(gr_file):
         print(f"Found existing data for η={density:.2f}. Loading instead of recomputing.")
@@ -220,7 +220,7 @@ for idx, density in enumerate(densities):
         # EQUILIBRATION
         # ============================
 
-        for step in range(0, 200_001):
+        for step in range(0, 1000001):
             x,y,acc = mc_move_lj(x, y, d, L, sigma, rcut, beta)
             attempted += 1
             if acc:
@@ -264,7 +264,7 @@ for idx, density in enumerate(densities):
         # SAVE AVERAGED g(r) FOR THIS DENSITY
         # =====================================
 
-        gr_file = f"gr_LJ2D_eta_{density:.2f}.npz"
+        gr_file = f"N=400gr_LJ2D_eta_{density:.2f}.npz"
 
         np.savez_compressed(
             gr_file,
@@ -295,5 +295,5 @@ plt.ylabel(r"$g(r)$", fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
 plt.legend(ncols = 2, fontsize=18)
 plt.tight_layout()
-plt.savefig("lj2D_gr.png", dpi=300)
+plt.savefig("N=400lj2D_gr.png", dpi=300)
 plt.show()

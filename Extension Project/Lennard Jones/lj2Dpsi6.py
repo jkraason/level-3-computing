@@ -128,7 +128,7 @@ def compute_psi6_2D(x, y, L, rcut):
 # ================================
 # Main Simulation
 # ================================
-plt.figure(figsize=(8,5))
+plt.figure(figsize=(14,8))
 
 for idx, density in enumerate(densities):
     psi_file = f"LJ2Dpsi6_eta_{density:.2f}.npz"
@@ -223,19 +223,38 @@ for idx, density in enumerate(densities):
                     fmt='o-',
                     capsize=3,
                     color=colors[idx],
-                    label=fr'$\eta={density:.3f}$')
+                    label=fr'$\eta={density:.2f}$')
+
+# Get current x-limits (after plotting your data)
+xmin, xmax = plt.xlim()
 
 # Shade hexatic region
-xmin, xmax = plt.xlim()
-plt.fill_between([xmin, xmax], 0.4, 0.7, color='grey', alpha=0.2, label='Hexatic phase')
+plt.fill_between(
+    [xmin, xmax],
+    0.4,
+    0.7,
+    color='grey',
+    alpha=0.2,
+    label='Hexatic phase'
+)
+
+# Keep reference lines if you want
 plt.axhline(1, color='black', linestyle='--', label='Hexagonal lattice')
 plt.axhline(0.2, color='blue', linestyle='--', label='Liquid phase')
 
 plt.xlabel("MC steps", fontsize=18)
-plt.ylabel(r"$\Psi_6$", fontsize=18)
-plt.title("2D Lennard-Jones Bond-Orientational Order")
+plt.ylabel(r"$\psi_6$", fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
-plt.legend(ncols=2,fontsize=18)
+#plt.title("Bond-orientational order vs MC steps")
+
+plt.legend(
+    ncols=1,
+    fontsize=16,
+    loc='center left',
+    bbox_to_anchor=(1.02, 0.5)
+)
+
 plt.tight_layout()
+plt.subplots_adjust(right=0.75)
 plt.savefig("LJ_2Dpsi6.png")
 plt.show()

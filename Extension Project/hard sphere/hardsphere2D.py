@@ -120,23 +120,23 @@ def averaged_g_r(x, y,r, d, L, rMax, dr, num_sims, sample, equil_steps=0, block_
 os.makedirs("frames", exist_ok=True)
 
 r = 0.03
-d_initial = 0.02
+d_initial = 0.01
 dr = 0.1*r
-Nx = 10
-Ny = 10
-N = Nx*Ny
+Nx = 20
+Ny = 20
+N=Nx*Ny
 
 densities = np.array([0.65,0.68, 0.71,0.74])
 L_values= np.sqrt((N*np.pi*(2*r)**2)/(4*densities))
 colors = ['red','blue','green','orange','purple','brown','black']
 
-plt.figure(figsize=(10,8))
+plt.figure(figsize=(8,6))
 
 # ==================================================
 # Main loop over densities
 # ==================================================
 for idx, (density, L) in enumerate(zip(densities, L_values)):
-    gr_file = f"gr_HS2D_eta_{density:.2f}.npz"
+    gr_file = f"N=400gr_HS2D_eta_{density:.2f}.npz"
 
     if os.path.exists(gr_file):
         print(f"Found existing data for η={density:.2f}. Loading instead of recomputing.")
@@ -146,7 +146,8 @@ for idx, (density, L) in enumerate(zip(densities, L_values)):
         g_err = data["g_err"]
     else:
         print(f"\n=== Density {density:.2f} ===")
-
+        accepted_moves = 0
+        eq_frame_index = 0
         x, y, spacing = create_hexagonal_lattice(N, r, L)
         d = d_initial
 
@@ -160,7 +161,7 @@ for idx, (density, L) in enumerate(zip(densities, L_values)):
         accepted_moves = 0
         attempted_moves = 0
 
-        for step in range(200000):
+        for step in range(1000000):
             x, y, accepted = mc_move(x, y, r, d, L)
             attempted_moves += 1
             if accepted:
@@ -182,16 +183,31 @@ for idx, (density, L) in enumerate(zip(densities, L_values)):
                 frame_index += 1
 
             # Tune displacement
-            if step>0 and step%tune_interval==0 and step<=tune_steps:
-                acc_ratio = accepted_moves/attempted_moves
-                if acc_ratio>0.5:
-                    d *= 1.05
-                elif acc_ratio<0.25:
-                    d *= 0.95
+        acceptance_ratio = accepted_moves/attempted_moves
+        while acceptance_ratio>0.5 or acceptance_ratio<0.25:
+            if acceptance_ratio>0.5:
+                accepted_moves=0
+                d = d*1.05 
+                print("d=", d)
+                for j in range(0,10000):
+                    x,y,z,accepted = mc_move(x,y,r,d,L)
+                    if accepted:
+                        accepted_moves+=1
+                acceptance_ratio = accepted_moves/10000
+                print("Acceptance ratio (large):", acceptance_ratio)
+            if acceptance_ratio<0.25:
                 accepted_moves = 0
-                attempted_moves = 0
+                d = d*0.95
+                print("d =",d)
+                for j in range(0,10000):
+                    x,y,z,accepted = mc_move(x,y,r,d,L)
+                    if accepted:
+                        accepted_moves+=1
+                acceptance_ratio = accepted_moves/10000
+                print("Acceptance ratio (small):", acceptance_ratio)
+        print("final acceptance ratio:", acceptance_ratio)
 
-        print(f"Final displacement d={d:.5f}")
+        print(f"Final d={d:.5f}")
 
         # Build GIF for this density
         frame_files = sorted([f for f in os.listdir(frames_dir) if f.endswith(".png")])
@@ -208,7 +224,7 @@ for idx, (density, L) in enumerate(zip(densities, L_values)):
         # SAVE AVERAGED g(r) FOR THIS DENSITY
         # =====================================
 
-        gr_file = f"gr_HS2D_eta_{density:.2f}.npz"
+        gr_file = f"N=400gr_HS2D_eta_{density:.2f}.npz"
 
         np.savez_compressed(
             gr_file,
@@ -234,9 +250,9 @@ plt.axhline(1, color='black', linestyle='--', label = 'Ideal gas')
 plt.xlabel('r/σ', fontsize=18)
 plt.ylabel('g(r)', fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
-plt.legend(ncols = 2,fontsize=18)
+plt.legend(fontsize=14)
 plt.tight_layout()
-plt.savefig("HS2Dgr.png", dpi=300)
+plt.savefig("N=400HS2Dgr.png", dpi=300)
 plt.show()
 
 

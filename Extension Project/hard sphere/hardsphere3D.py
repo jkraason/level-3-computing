@@ -114,7 +114,7 @@ d = 0.01
 dr = 0.1*r
 Nx = Ny = Nz = 3
 N = 4*Nx*Ny*Nz
-densities = np.array([0.49,0.51,0.53,0.55])
+densities = np.array([0.47,0.49,0.51,0.53,0.55,0.57])
 L_values = ((N*np.pi*(2*r)**3)/(6*(densities)))**(1/3)
 
 #plt.scatter(x,y,s=points_radius**2)
@@ -294,7 +294,7 @@ def averaged_g_r(x, y,z, r, d, L, rMax, dr, num_sims, sample, equil_steps=0, blo
 
 
 accepted_moves = 0
-colors = ['red', 'blue', 'green', 'orange', 'purple']
+colors = ['red', 'blue', 'green', 'orange', 'purple','brown']
 
 plt.figure(figsize=(8,6))
 k=0

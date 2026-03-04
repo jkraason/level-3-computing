@@ -232,7 +232,7 @@ plt.figure(figsize=(8,5))
 for density_idx, L in enumerate(L_values):
 
     density = densities[density_idx]
-    q6_file = f"Q6_eta_{density:.2f}.npz"
+    q6_file = f"WCA_Q6_eta_{density:.2f}.npz"
 
     print(f"\n=== Density η = {density:.2f} ===")
 

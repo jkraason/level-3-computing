@@ -135,11 +135,11 @@ N = 4*Nx*Ny*Nz
 
 densities = np.array([0.47,0.49,0.51,0.53,0.55,0.57])
 L_values = ((N*np.pi*(2*r)**3)/(6*densities))**(1/3)
-
+colours = ['red', 'blue', 'green', 'orange', 'purple', 'brown']
 n_runs = 3
 n_steps = 1000000
 sample_interval = 10000
-
+k=0
 # ================================
 # MAIN LOOP
 # ================================
@@ -202,17 +202,18 @@ for density_idx, L in enumerate(L_values):
     plt.errorbar(step_points,
                  Q6_mean,
                  yerr=Q6_sem,
+                 color = colours[k],
                  fmt='o-',
                  capsize=3,
                  label=f'η={density:.2f}', ls = ' ', marker = '.')
-
+    k=k+1
 plt.axhline(0.574, ls='--', c='k', label='FCC')
 plt.axhline(0.30, ls='--', c='gray', label='Liquid')
 
 plt.xlabel("MC steps", fontsize=18)
-plt.ylabel("Global $Q_6$", fontsize=18)
+plt.ylabel("$Q_6$", fontsize=18)
 plt.tick_params(axis='both', labelsize=14)
-plt.title("Bond-orientational order vs MC steps")
+#plt.title("Bond-orientational order vs MC steps")
 
 plt.legend(
     ncols=1,

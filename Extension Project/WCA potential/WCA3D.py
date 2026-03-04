@@ -297,7 +297,7 @@ plt.figure(figsize=(8,6))
 k=0
 
 for density_idx, (L, color) in enumerate(zip(L_values, colors)):
-    gr_file = f"gr_WCA3D_eta_{densities[density_idx]:.2f}.npz"
+    gr_file = f"gr_WCA_3D_eta_{densities[density_idx]:.2f}.npz"
 
     if os.path.exists(gr_file):
         print(f"Found existing data for η={densities[density_idx]:.2f}. Loading instead of recomputing.")
@@ -310,7 +310,7 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
         eq_frame_index = 0
         
         # Create separate folder for this density
-        frames_dir = f"LJframes_equil_eta_{densities[density_idx]:.2f}"
+        frames_dir = f"WCAframes_equil_eta_{densities[density_idx]:.2f}"
         os.makedirs(frames_dir, exist_ok=True)
         
         #lattice - initialise for each L
@@ -376,17 +376,17 @@ for density_idx, (L, color) in enumerate(zip(L_values, colors)):
         
         if len(eq_frames) > 0:
             eq_frames[0].save(
-                f"LJ3D_equilibration_eta_{densities[density_idx]:.2f}.gif",
+                f"WCA3D_equilibration_eta_{densities[density_idx]:.2f}.gif",
                 save_all=True,
                 append_images=eq_frames[1:],
                 duration=200,
                 loop=0
             )
-            print(f"Saved GIF: LJ3D_equilibration_eta_{densities[density_idx]:.2f}.gif")
+            print(f"Saved GIF: WCA3D_equilibration_eta_{densities[density_idx]:.2f}.gif")
         
         # Plot for this L value
         r_vals, g_r, g_err = averaged_g_r(x, y, z, r, d, L, rMax=L/2, dr=dr, num_sims=500_000, sample=1000, equil_steps=50_000, block_size=5)
-        gr_file = f"gr_LJ3D_eta_{densities[density_idx]:.2f}.npz"
+        gr_file = f"gr_WCA_3D_eta_{densities[density_idx]:.2f}.npz"
 
         np.savez_compressed(
             gr_file,
